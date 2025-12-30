@@ -24,6 +24,7 @@ import com.github.barteksc.pdfviewer.exception.PageRenderingException;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
 import com.github.barteksc.pdfviewer.util.PageSizeCalculator;
 import com.shockwave.pdfium.PdfDocument;
+import com.shockwave.pdfium.PdfFrameListener;
 import com.shockwave.pdfium.PdfiumCore;
 import com.shockwave.pdfium.util.Size;
 import com.shockwave.pdfium.util.SizeF;
@@ -290,10 +291,10 @@ class PdfFile {
         return !openedPages.get(docPage, false);
     }
 
-    public void renderPageBitmap(Bitmap bitmap, int pageIndex, Rect bounds, boolean annotationRendering) {
+    public void renderPageBitmap(Bitmap bitmap, int pageIndex, Rect bounds, boolean annotationRendering, PdfFrameListener frameListener) {
         int docPage = documentPage(pageIndex);
         pdfiumCore.renderPageBitmap(pdfDocument, bitmap, docPage,
-                bounds.left, bounds.top, bounds.width(), bounds.height(), annotationRendering);
+                bounds.left, bounds.top, bounds.width(), bounds.height(), annotationRendering, frameListener);
     }
 
     public PdfDocument.Meta getMetaData() {

@@ -27,6 +27,7 @@ import android.util.Log;
 
 import com.github.barteksc.pdfviewer.exception.PageRenderingException;
 import com.github.barteksc.pdfviewer.model.PagePart;
+import com.shockwave.pdfium.PdfFrameListener;
 
 /**
  * A {@link Handler} that will process incoming {@link RenderingTask} messages
@@ -106,7 +107,12 @@ class RenderingHandler extends Handler {
         }
         calculateBounds(w, h, renderingTask.bounds);
 
-        pdfFile.renderPageBitmap(render, renderingTask.page, roundedRenderBounds, renderingTask.annotationRendering);
+        pdfFile.renderPageBitmap(render, renderingTask.page, roundedRenderBounds, renderingTask.annotationRendering, new PdfFrameListener() {
+            @Override
+            public void onFrameAvailable() {
+                Log.e("renderPageBitmap", "frame bitmap finish");
+            }
+        });
 
         return new PagePart(renderingTask.page, render,
                 renderingTask.bounds, renderingTask.thumbnail,

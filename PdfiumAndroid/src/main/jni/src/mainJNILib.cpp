@@ -1,5 +1,6 @@
 #include "util.hpp"
-
+#include <iostream>
+#include <chrono>
 extern "C" {
     #include <unistd.h>
     #include <sys/mman.h>
@@ -467,9 +468,9 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong pagePtr, jobject ob
 }
 
 JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobject bitmap,
-                                             jint dpi, jint startX, jint startY,
-                                             jint drawSizeHor, jint drawSizeVer,
-                                             jboolean renderAnnot){
+                                                    jint dpi, jint startX, jint startY,
+                                                    jint drawSizeHor, jint drawSizeVer,
+                                                    jboolean renderAnnot, jobject frameRenderListener){
 
     FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
 
@@ -499,6 +500,9 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobj
         return;
     }
 
+    // auto start_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now()).time_since_epoch()).count();
+    // LOGI(" -- start time a frame draw %lld --", start_timestamp);
+
     void *tmp;
     int format;
     int sourceStride;
@@ -513,18 +517,18 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobj
     }
 
     FPDF_BITMAP pdfBitmap = FPDFBitmap_CreateEx( canvasHorSize, canvasVerSize,
-                                                     format, tmp, sourceStride);
-
-    /*LOGD("Start X: %d", startX);
+                                                 format, tmp, sourceStride);
+    /*
+    LOGD("Start X: %d", startX);
     LOGD("Start Y: %d", startY);
     LOGD("Canvas Hor: %d", canvasHorSize);
     LOGD("Canvas Ver: %d", canvasVerSize);
     LOGD("Draw Hor: %d", drawSizeHor);
-    LOGD("Draw Ver: %d", drawSizeVer);*/
+    LOGD("Draw Ver: %d", drawSizeVer); */
 
     if(drawSizeHor < canvasHorSize || drawSizeVer < canvasVerSize){
         FPDFBitmap_FillRect( pdfBitmap, 0, 0, canvasHorSize, canvasVerSize,
-                             0x848484FF); //Gray
+        0x848484FF); //Gray
     }
 
     int baseHorSize = (canvasHorSize < drawSizeHor)? canvasHorSize : (int)drawSizeHor;
@@ -534,22 +538,28 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobj
     int flags = FPDF_REVERSE_BYTE_ORDER;
 
     if(renderAnnot) {
-    	flags |= FPDF_ANNOT;
+        flags |= FPDF_ANNOT;
     }
 
     flags |= FPDF_RENDER_LIMITEDIMAGECACHE;
 
-    FPDFBitmap_FillRect( pdfBitmap, baseX, baseY, baseHorSize, baseVerSize,
-                         0xFFFFFFFF); //White
+    FPDFBitmap_FillRect(pdfBitmap, baseX, baseY, baseHorSize, baseVerSize, 0x000000); //black
 
-    FPDF_RenderPageBitmap( pdfBitmap, page,
-                           startX, startY,
-                           (int)drawSizeHor, (int)drawSizeVer,
-                           0, flags );
+    FPDF_RenderPageBitmap(pdfBitmap, page, startX, startY,(int)drawSizeHor, (int)drawSizeVer, 0, flags );
 
     if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
         rgbBitmapTo565(tmp, sourceStride, addr, &info);
         free(tmp);
+    }
+
+    // auto end_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now()).time_since_epoch()).count();
+    // LOGI(" -- end time a frame draw %lld --", end_timestamp);
+    if (frameRenderListener != nullptr) {
+        jclass cls = env->GetObjectClass(frameRenderListener);
+        jmethodID method = env->GetMethodID(cls, "onFrameAvailable", "()V");
+        if (method != nullptr) {
+            env->CallVoidMethod(frameRenderListener, method);
+        }
     }
 
     AndroidBitmap_unlockPixels(env, bitmap);
