@@ -1,2 +1,3 @@
+include ':PdfiumAndroid'
 include ':android-pdf-viewer'
 include ':sample'

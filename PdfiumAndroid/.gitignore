@@ -1,0 +1,11 @@
+src/main/libs
+src/main/obj
+
+*.iml
+.gradle
+/local.properties
+.idea/
+.DS_Store
+/build
+/captures
+/.vscode
