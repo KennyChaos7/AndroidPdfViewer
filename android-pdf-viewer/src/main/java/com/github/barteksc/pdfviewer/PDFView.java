@@ -242,6 +242,9 @@ public class PDFView extends RelativeLayout {
     /** Holds info whether view has been added to layout and has width and height */
     private boolean hasSize = false;
 
+    //  缩略图也进行分块加载，以加快加载进度，会将缩略图直接拆分为4个小块进行加载
+    private boolean isThumbnailSplit = false;
+
     /** Holds last used Configurator that should be loaded when view has size */
     private Configurator waitingDocumentConfigurator;
 
@@ -1275,6 +1278,14 @@ public class PDFView extends RelativeLayout {
         this.showLoadingDialog = showLoadingDialog;
     }
 
+    public boolean isThumbnailSplit() {
+        return isThumbnailSplit;
+    }
+
+    public void setThumbnailSplit(boolean thumbnailSplit) {
+        isThumbnailSplit = thumbnailSplit;
+    }
+
     public PageLoadingDialog getPageLoadingDialog() {
         return pageLoadingDialog;
     }
@@ -1398,6 +1409,8 @@ public class PDFView extends RelativeLayout {
         private boolean nightMode = false;
 
         private boolean showLoadingDialog = true;
+
+        private boolean isThumbnailSplit = false;
 
         private Configurator(DocumentSource documentSource) {
             this.documentSource = documentSource;
@@ -1544,7 +1557,12 @@ public class PDFView extends RelativeLayout {
         }
 
         public Configurator showLoadingDialog(boolean isShow) {
-            this.showLoadingDialog = showLoadingDialog;
+            this.showLoadingDialog = isShow;
+            return this;
+        }
+
+        public Configurator isThumbnailSplit(boolean isThumbnailSplit) {
+            this.isThumbnailSplit = isThumbnailSplit;
             return this;
         }
 
@@ -1580,6 +1598,7 @@ public class PDFView extends RelativeLayout {
             PDFView.this.setPageSnap(pageSnap);
             PDFView.this.setPageFling(pageFling);
             PDFView.this.setShowLoadingDialog(showLoadingDialog);
+            PDFView.this.setThumbnailSplit(isThumbnailSplit);
 
             if (pageNumbers != null) {
                 PDFView.this.load(documentSource, password, pageNumbers);

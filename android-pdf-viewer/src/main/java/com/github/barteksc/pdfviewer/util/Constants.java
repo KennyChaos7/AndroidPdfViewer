@@ -22,6 +22,9 @@ public class Constants {
     /** Between 0 and 1, the thumbnails quality (default 0.3). Increasing this value may cause performance decrease */
     public static float THUMBNAIL_RATIO = 0.3f;
 
+    // 缩略图拆分小快进行分块加载，默认为4快
+    public final static int THUMBNAIL_SPLIT = 4;
+
     /**
      * The size of the rendered parts (default 256)
      * Tinier : a little bit slower to have the whole page rendered but more reactive.
