@@ -1544,7 +1544,7 @@ public class PDFView extends RelativeLayout {
         }
 
         public Configurator showLoadingDialog(boolean isShow) {
-            this.showLoadingDialog = showLoadingDialog;
+            this.showLoadingDialog = isShow;
             return this;
         }
 
