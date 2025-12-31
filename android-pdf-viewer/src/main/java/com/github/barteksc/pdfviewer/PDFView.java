@@ -187,6 +187,10 @@ public class PDFView extends RelativeLayout {
 
     private boolean pageSnap = true;
 
+    // 是否展示在第一页pdf加载时的进度条
+    private boolean showLoadingDialog = true;
+    private PageLoadingDialog pageLoadingDialog = null;
+
     /** Pdfium core for loading and rendering PDFs */
     private PdfiumCore pdfiumCore;
 
@@ -1263,6 +1267,22 @@ public class PDFView extends RelativeLayout {
         return renderDuringScale;
     }
 
+    public boolean isShowLoadingDialog() {
+        return showLoadingDialog;
+    }
+
+    public void setShowLoadingDialog(boolean showLoadingDialog) {
+        this.showLoadingDialog = showLoadingDialog;
+    }
+
+    public PageLoadingDialog getPageLoadingDialog() {
+        return pageLoadingDialog;
+    }
+
+    public void setPageLoadingDialog(PageLoadingDialog pageLoadingDialog) {
+        this.pageLoadingDialog = pageLoadingDialog;
+    }
+
     /** Returns null if document is not loaded */
     public PdfDocument.Meta getDocumentMeta() {
         if (pdfFile == null) {
@@ -1376,6 +1396,8 @@ public class PDFView extends RelativeLayout {
         private boolean pageSnap = false;
 
         private boolean nightMode = false;
+
+        private boolean showLoadingDialog = true;
 
         private Configurator(DocumentSource documentSource) {
             this.documentSource = documentSource;
@@ -1521,6 +1543,11 @@ public class PDFView extends RelativeLayout {
             return this;
         }
 
+        public Configurator showLoadingDialog(boolean isShow) {
+            this.showLoadingDialog = showLoadingDialog;
+            return this;
+        }
+
         public void load() {
             if (!hasSize) {
                 waitingDocumentConfigurator = this;
@@ -1552,11 +1579,16 @@ public class PDFView extends RelativeLayout {
             PDFView.this.setFitEachPage(fitEachPage);
             PDFView.this.setPageSnap(pageSnap);
             PDFView.this.setPageFling(pageFling);
+            PDFView.this.setShowLoadingDialog(showLoadingDialog);
 
             if (pageNumbers != null) {
                 PDFView.this.load(documentSource, password, pageNumbers);
             } else {
                 PDFView.this.load(documentSource, password);
+            }
+            if (showLoadingDialog) {
+                PDFView.this.setPageLoadingDialog(new PageLoadingDialog(getContext()));
+                PDFView.this.getPageLoadingDialog().show();
             }
         }
     }

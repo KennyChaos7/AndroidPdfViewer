@@ -111,6 +111,9 @@ class RenderingHandler extends Handler {
             @Override
             public void onFrameAvailable() {
                 Log.e("renderPageBitmap", "frame bitmap finish");
+                if (pdfView.isShowLoadingDialog() && pdfView.getPageLoadingDialog() != null && pdfView.getPageLoadingDialog().isShowing()) {
+                    pdfView.getPageLoadingDialog().dismiss();
+                }
             }
         });
 
