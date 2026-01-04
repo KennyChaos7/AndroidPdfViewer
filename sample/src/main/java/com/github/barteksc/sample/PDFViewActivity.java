@@ -96,7 +96,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     void rotate() {
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        else if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)
+        else if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT)
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
     }
 
