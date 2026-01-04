@@ -6,4 +6,9 @@
         android:icon="@drawable/ic_open_in_browser_grey_700_48dp"
         android:title="@string/pick_file"
         app:showAsAction="always" />
+    <item
+        android:id="@+id/rotate"
+        android:icon="@android:drawable/ic_menu_rotate"
+        android:title="rotate"
+        app:showAsAction="always"/>
 </menu>

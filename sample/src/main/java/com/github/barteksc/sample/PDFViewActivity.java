@@ -17,7 +17,9 @@ package com.github.barteksc.sample;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
@@ -90,6 +92,15 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
         launchPicker();
     }
 
+    @OptionsItem(R.id.rotate)
+    void rotate() {
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        else if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+    }
+
+
     void launchPicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("application/pdf");
@@ -125,7 +136,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .spacing(10) // in dp
                 .onPageError(this)
                 .pageFitPolicy(FitPolicy.BOTH)
-                .showLoadingDialog(false) //显示首页加载的Loading
+                .showLoadingDialog(true) //显示首页加载的Loading
                 .isThumbnailSplit(true)// 缩略图分块
                 .load();
     }
