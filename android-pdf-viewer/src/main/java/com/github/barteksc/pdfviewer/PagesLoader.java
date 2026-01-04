@@ -308,7 +308,7 @@ class PagesLoader {
 //            int splitInVertical = (int) Math.sqrt(Constants.THUMBNAIL_SPLIT);
             int splitInVertical = Constants.THUMBNAIL_SPLIT / 2;
             divideRectangle(thumbnailRect, 0, splitInVertical, splitRectfList);
-            Log.e("loadThumbnail" , splitRectfList.size() + " - " + splitInVertical);
+//            Log.e("loadThumbnail" , splitRectfList.size() + " - " + splitInVertical);
             for (RectF rectF: splitRectfList) {
                 thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
                 thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO / splitRectfList.size();

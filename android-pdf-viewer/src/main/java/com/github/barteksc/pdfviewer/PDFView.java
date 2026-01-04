@@ -1284,6 +1284,13 @@ public class PDFView extends RelativeLayout {
 
     public void setThumbnailSplit(boolean thumbnailSplit) {
         isThumbnailSplit = thumbnailSplit;
+        //取决于是否进行成块
+        if (thumbnailSplit) {
+            Constants.Cache.THUMBNAILS_CACHE_SIZE = Constants.Cache.DEFAULT_THUMBNAILS_CACHE_SIZE * Constants.THUMBNAIL_SPLIT;
+        }
+        else {
+            Constants.Cache.THUMBNAILS_CACHE_SIZE = Constants.Cache.DEFAULT_THUMBNAILS_CACHE_SIZE;
+        }
     }
 
     public PageLoadingDialog getPageLoadingDialog() {
@@ -1561,8 +1568,8 @@ public class PDFView extends RelativeLayout {
             return this;
         }
 
-        public Configurator isThumbnailSplit(boolean isThumbnailSplit) {
-            this.isThumbnailSplit = isThumbnailSplit;
+        public Configurator isThumbnailSplit(boolean isSplit) {
+            this.isThumbnailSplit = isSplit;
             return this;
         }
 

@@ -15,6 +15,8 @@
  */
 package com.github.barteksc.pdfviewer.util;
 
+import com.github.barteksc.pdfviewer.PDFView;
+
 public class Constants {
 
     public static boolean DEBUG_MODE = false;
@@ -39,8 +41,13 @@ public class Constants {
 
         /** The size of the cache (number of bitmaps kept) */
         public static int CACHE_SIZE = 120;
-
-        public static int THUMBNAILS_CACHE_SIZE = 8;
+        //默认的缩略图最大缓存数量
+        public static int DEFAULT_THUMBNAILS_CACHE_SIZE = 8;
+        /**
+         * 缩略图的最大缓存数量跟是否进行缩略图分块#{@link PDFView#isThumbnailSplit()}处理相关
+         * 会在设置完缩略图是否分块{@link PDFView#setThumbnailSplit(boolean)}后进行重新设值
+         */
+        public static int THUMBNAILS_CACHE_SIZE = DEFAULT_THUMBNAILS_CACHE_SIZE;
     }
 
     public static class Pinch {
