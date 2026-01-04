@@ -16,12 +16,14 @@
 package com.github.barteksc.pdfviewer;
 
 import android.graphics.RectF;
+import android.util.Log;
 
 import com.github.barteksc.pdfviewer.util.Constants;
 import com.github.barteksc.pdfviewer.util.MathUtils;
 import com.github.barteksc.pdfviewer.util.Util;
 import com.shockwave.pdfium.util.SizeF;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -300,10 +302,53 @@ class PagesLoader {
         SizeF pageSize = pdfView.pdfFile.getPageSize(page);
         float thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO;
         float thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO;
-        if (!pdfView.cacheManager.containsThumbnail(page, thumbnailRect)) {
-            pdfView.renderingHandler.addRenderingTask(page,
-                    thumbnailWidth, thumbnailHeight, thumbnailRect,
-                    true, 0, pdfView.isBestQuality(), pdfView.isAnnotationRendering());
+        if (pdfView.isThumbnailSplit()) {
+            List<RectF> splitRectfList = new ArrayList<>(Constants.THUMBNAIL_SPLIT);
+            // TODO 每行的块数，利用开次方计算 ，目前先用固定分成4块处理
+//            int splitInVertical = (int) Math.sqrt(Constants.THUMBNAIL_SPLIT);
+            int splitInVertical = Constants.THUMBNAIL_SPLIT / 2;
+            divideRectangle(thumbnailRect, 0, splitInVertical, splitRectfList);
+//            Log.e("loadThumbnail" , splitRectfList.size() + " - " + splitInVertical);
+            for (RectF rectF: splitRectfList) {
+                thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
+                thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
+                if (!pdfView.cacheManager.containsThumbnail(page, rectF)) {
+                    pdfView.renderingHandler.addRenderingTask(page,
+                            thumbnailWidth, thumbnailHeight, rectF,
+                            true, 0, pdfView.isBestQuality(), pdfView.isAnnotationRendering());
+                }
+            }
+        }
+        else {
+            if (!pdfView.cacheManager.containsThumbnail(page, thumbnailRect)) {
+                pdfView.renderingHandler.addRenderingTask(page,
+                        thumbnailWidth, thumbnailHeight, thumbnailRect,
+                        true, 0, pdfView.isBestQuality(), pdfView.isAnnotationRendering());
+            }
+        }
+    }
+
+    // 递归划分方法
+    public void divideRectangle(RectF rectF, int currentDepth, int maxDepth,  List<RectF> splitRectfList) {
+        if (currentDepth >= maxDepth) {
+            splitRectfList.add(rectF);
+            return;
+        }
+        float x1 = rectF.left;
+        float y1 = rectF.top;
+        float x2 = rectF.right;
+        float y2 = rectF.bottom;
+        // 水平划分
+        if (currentDepth % 2 == 0) {
+            float midX = (x1 + x2) / 2;
+            divideRectangle(new RectF(x1, y1, midX, y2), currentDepth + 1, maxDepth, splitRectfList);
+            divideRectangle(new RectF(midX, y1, x2, y2), currentDepth + 1, maxDepth, splitRectfList);
+        }
+        // 垂直划分
+        else {
+            float midY = (y1 + y2) / 2;
+            divideRectangle(new RectF(x1, y1, x2, midY), currentDepth + 1, maxDepth, splitRectfList);
+            divideRectangle(new RectF(x1, midY, x2, y2), currentDepth + 1, maxDepth, splitRectfList);
         }
     }
 
