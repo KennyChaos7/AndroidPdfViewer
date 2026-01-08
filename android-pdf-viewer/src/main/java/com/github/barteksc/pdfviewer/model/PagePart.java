@@ -77,4 +77,13 @@ public class PagePart {
                 && part.getPageRelativeBounds().bottom == pageRelativeBounds.bottom;
     }
 
+    @Override
+    public String toString() {
+        return "PagePart{" +
+                "page=" + page +
+                ", pageRelativeBounds=" + pageRelativeBounds +
+                ", thumbnail=" + thumbnail +
+                ", cacheOrder=" + cacheOrder +
+                '}';
+    }
 }

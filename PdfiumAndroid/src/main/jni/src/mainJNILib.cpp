@@ -545,7 +545,7 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobj
 
     FPDFBitmap_FillRect(pdfBitmap, baseX, baseY, baseHorSize, baseVerSize, 0x000000); //black
 
-    FPDF_RenderPageBitmap(pdfBitmap, page, startX, startY,(int)drawSizeHor, (int)drawSizeVer, 0, flags );
+    FPDF_RenderPageBitmap(pdfBitmap, page, startX, startY,(int)drawSizeHor, (int)drawSizeVer, 0, flags);
 
     if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
         rgbBitmapTo565(tmp, sourceStride, addr, &info);

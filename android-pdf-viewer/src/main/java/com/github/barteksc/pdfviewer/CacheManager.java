@@ -113,8 +113,10 @@ class CacheManager {
      */
     public boolean containsThumbnail(int page, RectF pageRelativeBounds) {
         PagePart fakePart = new PagePart(page, null, pageRelativeBounds, true, 0);
+//        Log.e("containsThumbnail - fakePart", fakePart.toString());
         synchronized (thumbnails) {
             for (PagePart part : thumbnails) {
+//                Log.e("containsThumbnail", part.toString() + " - " + part.equals(fakePart));
                 if (part.equals(fakePart)) {
                     return true;
                 }
@@ -157,6 +159,19 @@ class CacheManager {
     public List<PagePart> getThumbnails() {
         synchronized (thumbnails) {
             return thumbnails;
+        }
+    }
+
+    /**
+     * 清理缓存
+     */
+    public void clearCache() {
+        synchronized (thumbnails) {
+            thumbnails.clear();
+        }
+        synchronized (passiveActiveLock) {
+            activeCache.clear();
+            passiveCache.clear();
         }
     }
 

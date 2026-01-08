@@ -41,6 +41,7 @@ class PagesLoader {
     private float partRenderWidth;
     private float partRenderHeight;
     private final RectF thumbnailRect = new RectF(0, 0, 1, 1);
+    private List<RectF> splitRectfList = new ArrayList<>(Constants.THUMBNAIL_SPLIT);
     private final int preloadOffset;
 
     private class Holder {
@@ -96,6 +97,12 @@ class PagesLoader {
     PagesLoader(PDFView pdfView) {
         this.pdfView = pdfView;
         this.preloadOffset = Util.getDP(pdfView.getContext(), PRELOAD_OFFSET);
+
+        // TODO 每行的块数，利用开次方计算 ，目前先用固定分成4块处理
+//            int splitInVertical = (int) Math.sqrt(Constants.THUMBNAIL_SPLIT);
+        int splitInVertical = Constants.THUMBNAIL_SPLIT / 2;
+        divideRectangle(thumbnailRect, 0, splitInVertical, splitRectfList);
+//            Log.e("loadThumbnail" , splitRectfList.size() + " - " + splitInVertical);
     }
 
     private void getPageColsRows(GridSize grid, int pageIndex) {
@@ -226,6 +233,58 @@ class PagesLoader {
         return renderRanges;
     }
 
+    private RenderRange getRenderRange(int page, float firstXOffset, float firstYOffset, float lastXOffset, float lastYOffset) {
+
+        float fixedFirstXOffset = -MathUtils.max(firstXOffset, 0);
+        float fixedFirstYOffset = -MathUtils.max(firstYOffset, 0);
+
+        float fixedLastXOffset = -MathUtils.max(lastXOffset, 0);
+        float fixedLastYOffset = -MathUtils.max(lastYOffset, 0);
+
+        float offsetFirst = pdfView.isSwipeVertical() ? fixedFirstYOffset : fixedFirstXOffset;
+        float offsetLast = pdfView.isSwipeVertical() ? fixedLastYOffset : fixedLastXOffset;
+
+        int pageCount = 1;
+        RenderRange range = new RenderRange();
+        range.page = page;
+
+        float pageFirstXOffset, pageFirstYOffset, pageLastXOffset, pageLastYOffset;
+        pageFirstXOffset = fixedFirstXOffset;
+        pageFirstYOffset = fixedFirstYOffset;
+        pageLastXOffset = fixedLastXOffset;
+        pageLastYOffset = fixedLastYOffset;
+        getPageColsRows(range.gridSize, range.page); // get the page's grid size that rows and cols
+        SizeF scaledPageSize = pdfView.pdfFile.getScaledPageSize(range.page, pdfView.getZoom());
+        float rowHeight = scaledPageSize.getHeight() / range.gridSize.rows;
+        float colWidth = scaledPageSize.getWidth() / range.gridSize.cols;
+
+
+        // get the page offset int the whole file
+        // ---------------------------------------
+        // |            |           |            |
+        // |<--offset-->|   (page)  |<--offset-->|
+        // |            |           |            |
+        // |            |           |            |
+        // ---------------------------------------
+        float secondaryOffset = pdfView.pdfFile.getSecondaryPageOffset(page, pdfView.getZoom());
+
+        // calculate the row,col of the point in the leftTop and rightBottom
+        if (pdfView.isSwipeVertical()) {
+            range.leftTop.row = MathUtils.floor(Math.abs(pageFirstYOffset - pdfView.pdfFile.getPageOffset(range.page, pdfView.getZoom())) / rowHeight);
+            range.leftTop.col = MathUtils.floor(MathUtils.min(pageFirstXOffset - secondaryOffset, 0) / colWidth);
+
+            range.rightBottom.row = MathUtils.ceil(Math.abs(pageLastYOffset - pdfView.pdfFile.getPageOffset(range.page, pdfView.getZoom())) / rowHeight);
+            range.rightBottom.col = MathUtils.floor(MathUtils.min(pageLastXOffset - secondaryOffset, 0) / colWidth);
+        } else {
+            range.leftTop.col = MathUtils.floor(Math.abs(pageFirstXOffset - pdfView.pdfFile.getPageOffset(range.page, pdfView.getZoom())) / colWidth);
+            range.leftTop.row = MathUtils.floor(MathUtils.min(pageFirstYOffset - secondaryOffset, 0) / rowHeight);
+
+            range.rightBottom.col = MathUtils.floor(Math.abs(pageLastXOffset - pdfView.pdfFile.getPageOffset(range.page, pdfView.getZoom())) / colWidth);
+            range.rightBottom.row = MathUtils.floor(MathUtils.min(pageLastYOffset - secondaryOffset, 0) / rowHeight);
+        }
+        return range;
+    }
+
     private void loadVisible() {
         int parts = 0;
         float scaledPreloadOffset = preloadOffset;
@@ -248,6 +307,26 @@ class PagesLoader {
             }
         }
 
+    }
+
+    private void loadSingleVisible(int page) {
+        float scaledPreloadOffset = preloadOffset;
+        float firstXOffset = -xOffset + scaledPreloadOffset;
+        float lastXOffset = -xOffset - pdfView.getWidth() - scaledPreloadOffset;
+        float firstYOffset = -yOffset + scaledPreloadOffset;
+        float lastYOffset = -yOffset - pdfView.getHeight() - scaledPreloadOffset;
+
+        RenderRange range = getRenderRange(page, firstXOffset, firstYOffset, lastXOffset, lastYOffset);
+        Log.e("loadSingleVisible", pdfView.getCurrentPage() + " - " + range.page);
+        /*
+         单页模式下，每页的数据实际上绘制在同一个位置的
+         由于绘制顺序的是先缩略后全图，导致如果切换页面的时候会先绘制第一页缩略，第二页缩略，然后是第一页的全图，实际上第二页的缩略图就被覆盖
+         所以单页模式下需要先清除缓存
+         */
+        pdfView.cacheManager.clearCache();
+        loadThumbnail(range.page);
+        calculatePartSize(range.gridSize);
+        loadPage(range.page, range.leftTop.row, range.rightBottom.row, range.leftTop.col, range.rightBottom.col, CACHE_SIZE);
     }
 
     private int loadPage(int page, int firstRow, int lastRow, int firstCol, int lastCol,
@@ -303,19 +382,15 @@ class PagesLoader {
         float thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO;
         float thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO;
         if (pdfView.isThumbnailSplit()) {
-            List<RectF> splitRectfList = new ArrayList<>(Constants.THUMBNAIL_SPLIT);
-            // TODO 每行的块数，利用开次方计算 ，目前先用固定分成4块处理
-//            int splitInVertical = (int) Math.sqrt(Constants.THUMBNAIL_SPLIT);
-            int splitInVertical = Constants.THUMBNAIL_SPLIT / 2;
-            divideRectangle(thumbnailRect, 0, splitInVertical, splitRectfList);
-//            Log.e("loadThumbnail" , splitRectfList.size() + " - " + splitInVertical);
             for (RectF rectF: splitRectfList) {
                 thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
                 thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
+                Log.e("loadThumbnail", page + " - " + rectF);
+                Log.e("loadThumbnail", !pdfView.cacheManager.containsThumbnail(page, rectF) + "");
                 if (!pdfView.cacheManager.containsThumbnail(page, rectF)) {
                     pdfView.renderingHandler.addRenderingTask(page,
                             thumbnailWidth, thumbnailHeight, rectF,
-                            true, 0, pdfView.isBestQuality(), pdfView.isAnnotationRendering());
+                            true, page, false, pdfView.isAnnotationRendering());
                 }
             }
         }
@@ -358,5 +433,13 @@ class PagesLoader {
         yOffset = -MathUtils.max(pdfView.getCurrentYOffset(), 0);
 
         loadVisible();
+    }
+
+    void loadSinglePage(int page) {
+        cacheOrder = 1;
+        xOffset = -MathUtils.max(pdfView.getCurrentXOffset(), 0);
+        yOffset = -MathUtils.max(pdfView.getCurrentYOffset(), 0);
+
+        loadSingleVisible(page);
     }
 }

@@ -72,6 +72,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * It supports animations, zoom, cache, and swipe.
@@ -184,6 +185,12 @@ public class PDFView extends RelativeLayout {
     private boolean doubletapEnabled = true;
 
     private boolean nightMode = false;
+
+    /** 单页模式
+     * 本质上是禁止上下左右滑动，放大缩小时只能看到当前本页，加载时只加载当前本页
+     * TODO  第一版将不受pageNumbers限制
+     */
+    private boolean singlePageMode = false;
 
     private boolean pageSnap = true;
 
@@ -404,6 +411,17 @@ public class PDFView extends RelativeLayout {
         }
     }
 
+    public void setSinglePageMode(boolean singlePageMode) {
+        this.singlePageMode = singlePageMode;
+        this.enableSwipe = false;
+        this.scrollHandle = null;
+        this.dragPinchManager.disable();
+    }
+
+    public boolean isSinglePageMode() {
+        return singlePageMode;
+    }
+
     void enableDoubletap(boolean enableDoubletap) {
         this.doubletapEnabled = enableDoubletap;
     }
@@ -463,7 +481,7 @@ public class PDFView extends RelativeLayout {
     @Override
     public void computeScroll() {
         super.computeScroll();
-        if (isInEditMode()) {
+        if (isInEditMode() && isSinglePageMode()) {
             return;
         }
         animationManager.computeFling();
@@ -571,6 +589,7 @@ public class PDFView extends RelativeLayout {
         if (isInEditMode()) {
             return;
         }
+        // 下面是多页连续模式
         // As I said in this class javadoc, we can think of this canvas as a huge
         // strip on which we draw all the images. We actually only draw the rendered
         // parts, of course, but we render them in the place they belong in this huge
@@ -742,6 +761,26 @@ public class PDFView extends RelativeLayout {
      * the current page displayed
      */
     public void loadPages() {
+        _loadPages();
+    }
+
+    public void loadPreviousPage() {
+        if (currentPage > 0)
+            currentPage -= 1;
+        _loadPages();
+    }
+
+    public void loadNextPage() {
+        Log.e("loadNextPage", currentPage + " - " + getPageCount());
+        if (currentPage < getPageCount() - 1)
+            currentPage += 1;
+        _loadPages();
+    }
+
+    /**
+     * 加载页面
+     */
+    private void _loadPages() {
         if (pdfFile == null || renderingHandler == null) {
             return;
         }
@@ -749,8 +788,10 @@ public class PDFView extends RelativeLayout {
         // Cancel all current tasks
         renderingHandler.removeMessages(RenderingHandler.MSG_RENDER_TASK);
         cacheManager.makeANewSet();
-
-        pagesLoader.loadPages();
+        if (singlePageMode)
+            pagesLoader.loadSinglePage(currentPage);
+        else
+            pagesLoader.loadPages();
         redraw();
     }
 
@@ -922,8 +963,10 @@ public class PDFView extends RelativeLayout {
             screenCenter = ((float) getWidth()) / 2;
         }
 
-        int page = pdfFile.getPageAtOffset(-(offset - screenCenter), zoom);
-
+        int page = currentPage;
+        if (!isSinglePageMode()) {
+            page = pdfFile.getPageAtOffset(-(offset - screenCenter), zoom);
+        }
         if (page >= 0 && page <= pdfFile.getPagesCount() - 1 && page != getCurrentPage()) {
             showPage(page);
         } else {
@@ -1419,6 +1462,8 @@ public class PDFView extends RelativeLayout {
 
         private boolean isThumbnailSplit = false;
 
+        private boolean singlePageMode = false;
+
         private Configurator(DocumentSource documentSource) {
             this.documentSource = documentSource;
         }
@@ -1573,6 +1618,12 @@ public class PDFView extends RelativeLayout {
             return this;
         }
 
+
+        public Configurator singlePageMode(boolean isSinglePageMode) {
+            this.singlePageMode = isSinglePageMode;
+            return this;
+        }
+
         public void load() {
             if (!hasSize) {
                 waitingDocumentConfigurator = this;
@@ -1606,6 +1657,7 @@ public class PDFView extends RelativeLayout {
             PDFView.this.setPageFling(pageFling);
             PDFView.this.setShowLoadingDialog(showLoadingDialog);
             PDFView.this.setThumbnailSplit(isThumbnailSplit);
+            PDFView.this.setSinglePageMode(singlePageMode);
 
             if (pageNumbers != null) {
                 PDFView.this.load(documentSource, password, pageNumbers);

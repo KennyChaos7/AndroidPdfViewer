@@ -54,7 +54,7 @@ public class Constants {
 
         public static float MAXIMUM_ZOOM = 10;
 
-        public static float MINIMUM_ZOOM = 1;
+        public static float MINIMUM_ZOOM = .5f;
 
     }
 

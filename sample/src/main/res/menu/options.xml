@@ -5,10 +5,20 @@
         android:id="@+id/pickFile"
         android:icon="@drawable/ic_open_in_browser_grey_700_48dp"
         android:title="@string/pick_file"
-        app:showAsAction="always" />
+        app:showAsAction="ifRoom" />
     <item
         android:id="@+id/rotate"
         android:icon="@android:drawable/ic_menu_rotate"
-        android:title="rotate"
+        android:title="@string/rotate"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/previous"
+        android:icon="@android:drawable/ic_media_previous"
+        android:title="@string/previous"
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/next"
+        android:icon="@android:drawable/ic_media_next"
+        android:title="@string/next"
         app:showAsAction="always"/>
 </menu>

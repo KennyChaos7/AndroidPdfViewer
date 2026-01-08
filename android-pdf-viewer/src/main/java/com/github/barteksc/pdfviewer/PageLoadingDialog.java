@@ -18,4 +18,16 @@ public class PageLoadingDialog extends ProgressDialog {
         setCanceledOnTouchOutside(outsideTouch);
     }
 
+    @Override
+    public void show() {
+        super.show();
+//        Log.e(this.getClass().getSimpleName().toString(), "show in " + System.currentTimeMillis());
+    }
+
+
+    @Override
+    public void dismiss() {
+        super.dismiss();
+//        Log.e(this.getClass().getSimpleName().toString(), "dismiss in " + System.currentTimeMillis());
+    }
 }

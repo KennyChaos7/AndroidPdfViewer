@@ -54,6 +54,8 @@ class PdfFile {
     private SizeF maxWidthPageSize = new SizeF(0, 0);
     /** True if scrolling is vertical, else it's horizontal */
     private boolean isVertical;
+    // 单页模式
+    private boolean isSinglePageMode;
     /** Fixed spacing between pages in pixels */
     private int spacingPx;
     /** Calculate spacing automatically so each page fits on it's own in the center of the view */
@@ -77,12 +79,13 @@ class PdfFile {
     private int[] originalUserPages;
 
     PdfFile(PdfiumCore pdfiumCore, PdfDocument pdfDocument, FitPolicy pageFitPolicy, Size viewSize, int[] originalUserPages,
-            boolean isVertical, int spacing, boolean autoSpacing, boolean fitEachPage) {
+            boolean isVertical, boolean isSinglePageMode, int spacing, boolean autoSpacing, boolean fitEachPage) {
         this.pdfiumCore = pdfiumCore;
         this.pdfDocument = pdfDocument;
         this.pageFitPolicy = pageFitPolicy;
         this.originalUserPages = originalUserPages;
         this.isVertical = isVertical;
+        this.isSinglePageMode = isSinglePageMode;
         this.spacingPx = spacing;
         this.autoSpacing = autoSpacing;
         this.fitEachPage = fitEachPage;
@@ -181,13 +184,24 @@ class PdfFile {
 
     private void prepareDocLen() {
         float length = 0;
-        for (int i = 0; i < getPagesCount(); i++) {
-            SizeF pageSize = pageSizes.get(i);
+        if (isSinglePageMode) {
+            SizeF pageSize = pageSizes.get(0);
             length += isVertical ? pageSize.getHeight() : pageSize.getWidth();
             if (autoSpacing) {
-                length += pageSpacing.get(i);
-            } else if (i < getPagesCount() - 1) {
+                length += pageSpacing.get(0);
+            } else if (0 < getPagesCount() - 1) {
                 length += spacingPx;
+            }
+        }
+        else {
+            for (int i = 0; i < getPagesCount(); i++) {
+                SizeF pageSize = pageSizes.get(i);
+                length += isVertical ? pageSize.getHeight() : pageSize.getWidth();
+                if (autoSpacing) {
+                    length += pageSpacing.get(i);
+                } else if (i < getPagesCount() - 1) {
+                    length += spacingPx;
+                }
             }
         }
         documentLength = length;
@@ -196,21 +210,33 @@ class PdfFile {
     private void preparePagesOffset() {
         pageOffsets.clear();
         float offset = 0;
-        for (int i = 0; i < getPagesCount(); i++) {
-            SizeF pageSize = pageSizes.get(i);
-            float size = isVertical ? pageSize.getHeight() : pageSize.getWidth();
+        if (isSinglePageMode) {
             if (autoSpacing) {
-                offset += pageSpacing.get(i) / 2f;
-                if (i == 0) {
-                    offset -= spacingPx / 2f;
-                } else if (i == getPagesCount() - 1) {
-                    offset += spacingPx / 2f;
+                offset += pageSpacing.get(0) / 2f;
+                offset -= spacingPx / 2f;
+
+            }
+            for (int i = 0; i < getPagesCount(); i++) {
+                pageOffsets.add(offset);
+            }
+        }
+        else {
+            for (int i = 0; i < getPagesCount(); i++) {
+                SizeF pageSize = pageSizes.get(i);
+                float size = isVertical ? pageSize.getHeight() : pageSize.getWidth();
+                if (autoSpacing) {
+                    offset += pageSpacing.get(i) / 2f;
+                    if (i == 0) {
+                        offset -= spacingPx / 2f;
+                    } else if (i == getPagesCount() - 1) {
+                        offset += spacingPx / 2f;
+                    }
+                    pageOffsets.add(offset);
+                    offset += size + pageSpacing.get(i) / 2f;
+                } else {
+                    pageOffsets.add(offset);
+                    offset += size + spacingPx;
                 }
-                pageOffsets.add(offset);
-                offset += size + pageSpacing.get(i) / 2f;
-            } else {
-                pageOffsets.add(offset);
-                offset += size + spacingPx;
             }
         }
     }
@@ -261,6 +287,7 @@ class PdfFile {
                 break;
             }
             currentPage++;
+//            if (isSinglePageMode) break;
         }
         return --currentPage >= 0 ? currentPage : 0;
     }

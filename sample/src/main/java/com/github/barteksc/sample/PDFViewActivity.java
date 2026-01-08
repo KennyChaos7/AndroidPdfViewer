@@ -61,6 +61,10 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
 
     public static final String SAMPLE_FILE = "sample.pdf";
     public static final String SAMPLE_FILE2 = "sample2.pdf";
+    public static final String SAMPLE_FILE3 = "sample3.pdf";
+    public static final String SAMPLE_FILE4 = "sample4.pdf";
+    public static final String SAMPLE_FILE5 = "sample5.pdf";
+    public static final String SAMPLE_FILE6 = "sample6.pdf";
     public static final String READ_EXTERNAL_STORAGE = "android.permission.READ_EXTERNAL_STORAGE";
 
     @ViewById
@@ -100,6 +104,18 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
     }
 
+    @OptionsItem(R.id.previous)
+    void previous() {
+        // 上一页
+        pdfView.loadPreviousPage();
+    }
+
+    @OptionsItem(R.id.next)
+    void next() {
+        // 下一页
+        pdfView.loadNextPage();
+    }
+
 
     void launchPicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -132,12 +148,13 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .onPageChange(this)
                 .enableAnnotationRendering(true)
                 .onLoad(this)
-                .scrollHandle(new DefaultScrollHandle(this))
+//                .scrollHandle(new DefaultScrollHandle(this))
                 .spacing(10) // in dp
                 .onPageError(this)
                 .pageFitPolicy(FitPolicy.BOTH)
-                .showLoadingDialog(true) //显示首页加载的Loading
+                .showLoadingDialog(false) //显示首页加载的Loading
                 .isThumbnailSplit(true)// 缩略图分块
+                .singlePageMode(true)// 单页模式
                 .load();
     }
 
