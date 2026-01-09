@@ -187,9 +187,10 @@ class DragPinchManager implements GestureDetector.OnGestureListener, GestureDete
     }
 
     private void onScrollEnd(MotionEvent event) {
-        pdfView.loadPages();
+        if (!pdfView.isSinglePageMode())
+            pdfView.loadPages();
         hideHandle();
-        if (!animationManager.isFlinging()) {
+        if (!animationManager.isFlinging() && !pdfView.isSinglePageMode()) {
             pdfView.performPageSnap();
         }
     }
@@ -279,7 +280,8 @@ class DragPinchManager implements GestureDetector.OnGestureListener, GestureDete
 
     @Override
     public void onScaleEnd(ScaleGestureDetector detector) {
-        pdfView.loadPages();
+        if (!pdfView.isSinglePageMode())
+            pdfView.loadPages();
         hideHandle();
         scaling = false;
     }

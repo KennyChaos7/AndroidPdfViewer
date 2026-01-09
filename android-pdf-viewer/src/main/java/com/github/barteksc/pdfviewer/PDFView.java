@@ -188,6 +188,7 @@ public class PDFView extends RelativeLayout {
 
     /** 单页模式
      * 本质上是禁止上下左右滑动，放大缩小时只能看到当前本页，加载时只加载当前本页
+     * 需要在多个手势控制中进行额外的判断，因为原本手势处理中需要判断是否重新加载新的页面，但由于单页模式只存在一个页，不需要判断
      * TODO  第一版将不受pageNumbers限制
      */
     private boolean singlePageMode = false;
@@ -481,7 +482,7 @@ public class PDFView extends RelativeLayout {
     @Override
     public void computeScroll() {
         super.computeScroll();
-        if (isInEditMode() && isSinglePageMode()) {
+        if (isInEditMode() || isSinglePageMode()) {
             return;
         }
         animationManager.computeFling();
@@ -647,12 +648,14 @@ public class PDFView extends RelativeLayout {
 
         // Draws thumbnails
         for (PagePart part : cacheManager.getThumbnails()) {
+//            Log.e("onDraw - thumbnails", part.toString());
             drawPart(canvas, part);
 
         }
 
         // Draws parts
         for (PagePart part : cacheManager.getPageParts()) {
+//            Log.e("onDraw - parts", part.toString());
             drawPart(canvas, part);
             if (callbacks.getOnDrawAll() != null
                     && !onDrawPagesNums.contains(part.getPage())) {
@@ -966,11 +969,11 @@ public class PDFView extends RelativeLayout {
         int page = currentPage;
         if (!isSinglePageMode()) {
             page = pdfFile.getPageAtOffset(-(offset - screenCenter), zoom);
-        }
-        if (page >= 0 && page <= pdfFile.getPagesCount() - 1 && page != getCurrentPage()) {
-            showPage(page);
-        } else {
-            loadPages();
+            if (page >= 0 && page <= pdfFile.getPagesCount() - 1 && page != getCurrentPage()) {
+                showPage(page);
+            } else {
+                loadPages();
+            }
         }
     }
 
