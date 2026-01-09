@@ -27,8 +27,11 @@ import android.provider.OpenableColumns;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.github.barteksc.pdfviewer.PDFView;
@@ -66,6 +69,9 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     public static final String SAMPLE_FILE5 = "sample5.pdf";
     public static final String SAMPLE_FILE6 = "sample6.pdf";
     public static final String READ_EXTERNAL_STORAGE = "android.permission.READ_EXTERNAL_STORAGE";
+
+    // 页码跳转弹窗
+    private AlertDialog jumpToDialog;
 
     @ViewById
     PDFView pdfView;
@@ -114,6 +120,12 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     void next() {
         // 下一页
         pdfView.loadNextPage();
+    }
+
+    @OptionsItem(R.id.jump_to)
+    void jumpTo() {
+        // 跳转页码
+        showJumpToDialog();
     }
 
 
@@ -170,6 +182,31 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .spacing(10) // in dp
                 .onPageError(this)
                 .load();
+    }
+
+    /**
+     * 页码跳转弹窗设置
+     */
+    private void showJumpToDialog() {
+        if (jumpToDialog == null) {
+            jumpToDialog = new AlertDialog.Builder(this).setView(R.layout.dialog_jump_to).create();
+            jumpToDialog.setCanceledOnTouchOutside(true);
+        }
+        jumpToDialog.show();
+        jumpToDialog.findViewById(R.id.btn_ok).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EditText editPages = jumpToDialog.findViewById(R.id.edit_pages);
+                if (editPages != null && editPages.getText().length() > 0) {
+                    int page = Integer.parseInt(editPages.getText().toString());
+//                    Log.e("pdfView", "jump to " + page);
+                    if (page >= 1 && page <= pdfView.getPageCount()) {
+                        pdfView.jumpTo(page - 1);
+                        jumpToDialog.dismiss();
+                    }
+                }
+            }
+        });
     }
 
     @OnActivityResult(REQUEST_CODE)

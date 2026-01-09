@@ -6,6 +6,10 @@
         android:icon="@drawable/ic_open_in_browser_grey_700_48dp"
         android:title="@string/pick_file"
         app:showAsAction="ifRoom" />
+    <item android:id="@+id/jump_to"
+        android:icon="@android:drawable/ic_media_ff"
+        android:title="@string/jump_to"
+        app:showAsAction="ifRoom"/>
     <item
         android:id="@+id/rotate"
         android:icon="@android:drawable/ic_menu_rotate"
