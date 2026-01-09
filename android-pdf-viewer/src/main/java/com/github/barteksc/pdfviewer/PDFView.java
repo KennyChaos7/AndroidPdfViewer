@@ -650,7 +650,6 @@ public class PDFView extends RelativeLayout {
         for (PagePart part : cacheManager.getThumbnails()) {
 //            Log.e("onDraw - thumbnails", part.toString());
             drawPart(canvas, part);
-
         }
 
         // Draws parts
@@ -660,6 +659,10 @@ public class PDFView extends RelativeLayout {
             if (callbacks.getOnDrawAll() != null
                     && !onDrawPagesNums.contains(part.getPage())) {
                 onDrawPagesNums.add(part.getPage());
+            }
+            if (isSinglePageMode()) {
+                // 单页模式下的页码回调
+                callbacks.callOnPageChange(part.getPage(), pdfFile.getPagesCount());
             }
         }
 
@@ -974,6 +977,10 @@ public class PDFView extends RelativeLayout {
             } else {
                 loadPages();
             }
+        }
+        else {
+            // 单页模式下的页码回调
+            callbacks.callOnPageChange(page, pdfFile.getPagesCount());
         }
     }
 
