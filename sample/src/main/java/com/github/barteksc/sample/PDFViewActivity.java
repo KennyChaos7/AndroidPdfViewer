@@ -63,11 +63,6 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     public static final int PERMISSION_CODE = 42042;
 
     public static final String SAMPLE_FILE = "sample.pdf";
-    public static final String SAMPLE_FILE2 = "sample2.pdf";
-    public static final String SAMPLE_FILE3 = "sample3.pdf";
-    public static final String SAMPLE_FILE4 = "sample4.pdf";
-    public static final String SAMPLE_FILE5 = "sample5.pdf";
-    public static final String SAMPLE_FILE6 = "sample6.pdf";
     public static final String READ_EXTERNAL_STORAGE = "android.permission.READ_EXTERNAL_STORAGE";
 
     // 页码跳转弹窗
@@ -155,7 +150,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
         pdfFileName = assetFileName;
 
         pdfView.useBestQuality(false);
-        pdfView.fromAsset(SAMPLE_FILE2)
+        pdfView.fromAsset(SAMPLE_FILE)
                 .defaultPage(pageNumber)
                 .onPageChange(this)
                 .enableAnnotationRendering(true)
@@ -164,7 +159,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .spacing(10) // in dp
                 .onPageError(this)
                 .pageFitPolicy(FitPolicy.BOTH)
-                .showLoadingDialog(false) //显示首页加载的Loading
+                .showLoadingDialog(true) //显示首页加载的Loading
                 .isThumbnailSplit(true)// 缩略图分块
                 .singlePageMode(true)// 单页模式
                 .load();
