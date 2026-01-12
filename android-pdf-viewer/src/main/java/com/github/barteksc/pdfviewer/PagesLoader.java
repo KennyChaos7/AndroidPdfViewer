@@ -41,7 +41,7 @@ class PagesLoader {
     private float partRenderWidth;
     private float partRenderHeight;
     private final RectF thumbnailRect = new RectF(0, 0, 1, 1);
-    private List<RectF> splitRectfList = new ArrayList<>(Constants.THUMBNAIL_SPLIT);
+    private ArrayList<RectF> splitRectFList = new ArrayList<>(Constants.THUMBNAIL_SPLIT_VERTICAL * Constants.THUMBNAIL_SPLIT_LEVEL);
     private final int preloadOffset;
 
     private class Holder {
@@ -97,12 +97,8 @@ class PagesLoader {
     PagesLoader(PDFView pdfView) {
         this.pdfView = pdfView;
         this.preloadOffset = Util.getDP(pdfView.getContext(), PRELOAD_OFFSET);
-
-        // TODO 每行的块数，利用开次方计算 ，目前先用固定分成4块处理
-//            int splitInVertical = (int) Math.sqrt(Constants.THUMBNAIL_SPLIT);
-        int splitInVertical = Constants.THUMBNAIL_SPLIT / 2;
-        divideRectangle(thumbnailRect, 0, splitInVertical, splitRectfList);
-//            Log.e("loadThumbnail" , splitRectfList.size() + " - " + splitInVertical);
+        // 根据设置进行横排个数和竖排个数的设置
+        splitRectFList = splitRecftList(thumbnailRect, Constants.THUMBNAIL_SPLIT_VERTICAL,Constants.THUMBNAIL_SPLIT_LEVEL);
     }
 
     private void getPageColsRows(GridSize grid, int pageIndex) {
@@ -382,9 +378,9 @@ class PagesLoader {
         float thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO;
         float thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO;
         if (pdfView.isThumbnailSplit()) {
-            for (RectF rectF: splitRectfList) {
-                thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
-                thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
+            for (RectF rectF: splitRectFList) {
+                thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO / splitRectFList.size();
+                thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO / splitRectFList.size();
 //                Log.e("loadThumbnail", page + " - " + rectF);
 //                Log.e("loadThumbnail", !pdfView.cacheManager.containsThumbnail(page, rectF) + "");
                 if (!pdfView.cacheManager.containsThumbnail(page, rectF)) {
@@ -403,28 +399,19 @@ class PagesLoader {
         }
     }
 
-    // 递归划分方法
-    public void divideRectangle(RectF rectF, int currentDepth, int maxDepth,  List<RectF> splitRectfList) {
-        if (currentDepth >= maxDepth) {
-            splitRectfList.add(rectF);
-            return;
+    private ArrayList<RectF> splitRecftList(RectF rectF, int numInVertical, int numInLevel) {
+        float intervalInVer = 1f / numInVertical;
+        float intervalInHor = 1f / numInLevel;
+//        Log.e("loadThumbnail", intervalInVer + " - " + intervalInHor);
+        ArrayList<RectF> rectFList = new ArrayList<>();
+        for (float row = 0f; (row + intervalInHor) <= 1f; row+=intervalInHor) {
+            for (float col = 0f; (col + intervalInVer) <= 1f; col+=intervalInVer) {
+                RectF newRectf = new RectF(col, row, col+intervalInVer, row + intervalInHor);
+                rectFList.add(newRectf);
+//                Log.e("loadThumbnail", newRectf.toString());
+            }
         }
-        float x1 = rectF.left;
-        float y1 = rectF.top;
-        float x2 = rectF.right;
-        float y2 = rectF.bottom;
-        // 水平划分
-        if (currentDepth % 2 == 0) {
-            float midX = (x1 + x2) / 2;
-            divideRectangle(new RectF(x1, y1, midX, y2), currentDepth + 1, maxDepth, splitRectfList);
-            divideRectangle(new RectF(midX, y1, x2, y2), currentDepth + 1, maxDepth, splitRectfList);
-        }
-        // 垂直划分
-        else {
-            float midY = (y1 + y2) / 2;
-            divideRectangle(new RectF(x1, y1, x2, midY), currentDepth + 1, maxDepth, splitRectfList);
-            divideRectangle(new RectF(x1, midY, x2, y2), currentDepth + 1, maxDepth, splitRectfList);
-        }
+        return rectFList;
     }
 
     void loadPages() {

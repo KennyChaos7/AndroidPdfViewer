@@ -1345,9 +1345,9 @@ public class PDFView extends RelativeLayout {
 
     public void setThumbnailSplit(boolean thumbnailSplit) {
         isThumbnailSplit = thumbnailSplit;
-        //取决于是否进行成块
+        // 取决于是否进行成块
         if (thumbnailSplit) {
-            Constants.Cache.THUMBNAILS_CACHE_SIZE = Constants.Cache.DEFAULT_THUMBNAILS_CACHE_SIZE * Constants.THUMBNAIL_SPLIT;
+            Constants.Cache.THUMBNAILS_CACHE_SIZE = Constants.Cache.DEFAULT_THUMBNAILS_CACHE_SIZE * Constants.THUMBNAIL_SPLIT_VERTICAL * Constants.THUMBNAIL_SPLIT_LEVEL;
         }
         else {
             Constants.Cache.THUMBNAILS_CACHE_SIZE = Constants.Cache.DEFAULT_THUMBNAILS_CACHE_SIZE;

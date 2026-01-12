@@ -15,6 +15,8 @@
  */
 package com.github.barteksc.pdfviewer.util;
 
+import android.graphics.RectF;
+
 import com.github.barteksc.pdfviewer.PDFView;
 
 public class Constants {
@@ -24,8 +26,13 @@ public class Constants {
     /** Between 0 and 1, the thumbnails quality (default 0.3). Increasing this value may cause performance decrease */
     public static float THUMBNAIL_RATIO = 0.3f;
 
-    // 缩略图拆分小快进行分块加载，默认为4快
-    public final static int THUMBNAIL_SPLIT = 4;
+    /**
+     * 缩略图拆分小快进行分块加载
+     * 存在横排个数的设置和竖排个数的设置
+     * {@link com.github.barteksc.pdfviewer.PagesLoader#splitRecftList(RectF, int, int)}
+     */
+    public final static int THUMBNAIL_SPLIT_VERTICAL = 2;
+    public final static int THUMBNAIL_SPLIT_LEVEL = 2;
 
     /**
      * The size of the rendered parts (default 256)

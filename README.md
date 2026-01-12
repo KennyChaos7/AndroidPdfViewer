@@ -6,6 +6,8 @@
   -  - [ ] 可以考虑是否增加到每个bitmap上
 - [x] 增加是否进行pdfView缩略图分块渲染设置
   - 创建PdfView时，**PdfView.isThumbnailSplit(true)** 可以设置为缩略图分块渲染模式
+  - 支持在**Constants**中直接修改具体块数，横向**THUMBNAIL_SPLIT_VERTICAL**纵向**THUMBNAIL_SPLIT_LEVEL**
+  - **分的块数越多会导致实际显示效果不佳**
 - [ ] 单页模式
   - - [x] 单页模式1.0 
     - 原本pdfview中也有单页模式，需要在PdfView.pages()中填入相应的页码，限制要读取的页码数据。但在实际的情况下的单页模式，更多是取消连续滑动，靠下一页按钮进行切换，但仍需要读取全部页码数据。
