@@ -414,9 +414,11 @@ public class PDFView extends RelativeLayout {
 
     public void setSinglePageMode(boolean singlePageMode) {
         this.singlePageMode = singlePageMode;
-        this.enableSwipe = false;
-        this.scrollHandle = null;
-        this.dragPinchManager.disable();
+        if (this.singlePageMode) {
+            this.enableSwipe = false;
+            this.scrollHandle = null;
+            this.dragPinchManager.disable();
+        }
     }
 
     public boolean isSinglePageMode() {
@@ -770,17 +772,22 @@ public class PDFView extends RelativeLayout {
         _loadPages();
     }
 
+    //TODO 上一页跳转，目前只支持单页模式，将修改支持所有模式
     public void loadPreviousPage() {
-        if (currentPage > 0)
-            currentPage -= 1;
-        _loadPages();
+        if (isSinglePageMode()) {
+            if (currentPage > 0)
+                currentPage -= 1;
+            _loadPages();
+        }
     }
 
+    //TODO 下一页跳转，目前只支持单页模式，将修改支持所有模式
     public void loadNextPage() {
-        Log.e("loadNextPage", currentPage + " - " + getPageCount());
-        if (currentPage < getPageCount() - 1)
-            currentPage += 1;
-        _loadPages();
+        if (isSinglePageMode()) {
+            if (currentPage < getPageCount() - 1)
+                currentPage += 1;
+            _loadPages();
+        }
     }
 
     /**
@@ -860,6 +867,7 @@ public class PDFView extends RelativeLayout {
         } else {
             cacheManager.cachePart(part);
         }
+//        Log.e("onBitmapRendered", " - " + part.toString());
         redraw();
     }
 

@@ -108,13 +108,15 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     @OptionsItem(R.id.previous)
     void previous() {
         // 上一页
-        pdfView.loadPreviousPage();
+        if (pdfView.isSinglePageMode())
+            pdfView.loadPreviousPage();
     }
 
     @OptionsItem(R.id.next)
     void next() {
         // 下一页
-        pdfView.loadNextPage();
+        if (pdfView.isSinglePageMode())
+            pdfView.loadNextPage();
     }
 
     @OptionsItem(R.id.jump_to)

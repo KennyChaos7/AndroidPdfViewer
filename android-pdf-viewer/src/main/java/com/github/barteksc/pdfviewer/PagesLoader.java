@@ -385,8 +385,8 @@ class PagesLoader {
             for (RectF rectF: splitRectfList) {
                 thumbnailWidth = pageSize.getWidth() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
                 thumbnailHeight = pageSize.getHeight() * Constants.THUMBNAIL_RATIO / splitRectfList.size();
-                Log.e("loadThumbnail", page + " - " + rectF);
-                Log.e("loadThumbnail", !pdfView.cacheManager.containsThumbnail(page, rectF) + "");
+//                Log.e("loadThumbnail", page + " - " + rectF);
+//                Log.e("loadThumbnail", !pdfView.cacheManager.containsThumbnail(page, rectF) + "");
                 if (!pdfView.cacheManager.containsThumbnail(page, rectF)) {
                     pdfView.renderingHandler.addRenderingTask(page,
                             thumbnailWidth, thumbnailHeight, rectF,
