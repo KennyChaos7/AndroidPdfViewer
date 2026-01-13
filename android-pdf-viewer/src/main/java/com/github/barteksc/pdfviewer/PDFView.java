@@ -73,6 +73,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * It supports animations, zoom, cache, and swipe.
@@ -127,7 +128,7 @@ public class PDFView extends RelativeLayout {
     PdfFile pdfFile;
 
     /** The index of the current sequence */
-    private int currentPage;
+    private AtomicInteger currentPage = new AtomicInteger(0);
 
     /**
      * If you picture all the pages side by side in their optimal width,
@@ -335,15 +336,15 @@ public class PDFView extends RelativeLayout {
         // Check the page number and makes the
         // difference between UserPages and DocumentPages
         pageNb = pdfFile.determineValidPageNumberFrom(pageNb);
-        currentPage = pageNb;
+        currentPage.set(pageNb);
 
         loadPages();
 
         if (scrollHandle != null && !documentFitsView()) {
-            scrollHandle.setPageNum(currentPage + 1);
+            scrollHandle.setPageNum(currentPage.get() + 1);
         }
 
-        callbacks.callOnPageChange(currentPage, pdfFile.getPagesCount());
+        callbacks.callOnPageChange(currentPage.get(), pdfFile.getPagesCount());
     }
 
     /**
@@ -592,7 +593,7 @@ public class PDFView extends RelativeLayout {
         if (isInEditMode()) {
             return;
         }
-        // 下面是多页连续模式
+        // 下面是多页连续模式的绘制流程演示
         // As I said in this class javadoc, we can think of this canvas as a huge
         // strip on which we draw all the images. We actually only draw the rendered
         // parts, of course, but we render them in the place they belong in this huge
@@ -673,7 +674,7 @@ public class PDFView extends RelativeLayout {
         }
         onDrawPagesNums.clear();
 
-        drawWithListener(canvas, currentPage, callbacks.getOnDraw());
+        drawWithListener(canvas, currentPage.get(), callbacks.getOnDraw());
 
         // Restores the canvas position
         canvas.translate(-currentXOffset, -currentYOffset);
@@ -775,8 +776,8 @@ public class PDFView extends RelativeLayout {
     //TODO 上一页跳转，目前只支持单页模式，将修改支持所有模式
     public void loadPreviousPage() {
         if (isSinglePageMode()) {
-            if (currentPage > 0)
-                currentPage -= 1;
+            if (currentPage.get() > 0)
+                currentPage.set(currentPage.get() - 1);
             _loadPages();
         }
     }
@@ -784,8 +785,8 @@ public class PDFView extends RelativeLayout {
     //TODO 下一页跳转，目前只支持单页模式，将修改支持所有模式
     public void loadNextPage() {
         if (isSinglePageMode()) {
-            if (currentPage < getPageCount() - 1)
-                currentPage += 1;
+            if (currentPage.get() < getPageCount() - 1)
+                currentPage.set(currentPage.get() + 1);
             _loadPages();
         }
     }
@@ -802,7 +803,7 @@ public class PDFView extends RelativeLayout {
         renderingHandler.removeMessages(RenderingHandler.MSG_RENDER_TASK);
         cacheManager.makeANewSet();
         if (singlePageMode)
-            pagesLoader.loadSinglePage(currentPage);
+            pagesLoader.loadSinglePage(currentPage.get());
         else
             pagesLoader.loadPages();
         redraw();
@@ -977,7 +978,7 @@ public class PDFView extends RelativeLayout {
             screenCenter = ((float) getWidth()) / 2;
         }
 
-        int page = currentPage;
+        int page = currentPage.get();
         if (!isSinglePageMode()) {
             page = pdfFile.getPageAtOffset(-(offset - screenCenter), zoom);
             if (page >= 0 && page <= pdfFile.getPagesCount() - 1 && page != getCurrentPage()) {
@@ -1071,8 +1072,8 @@ public class PDFView extends RelativeLayout {
      * @return true if single page fills the entire screen in the scrolling direction
      */
     public boolean pageFillsScreen() {
-        float start = -pdfFile.getPageOffset(currentPage, zoom);
-        float end = start - pdfFile.getPageLength(currentPage, zoom);
+        float start = -pdfFile.getPageOffset(currentPage.get(), zoom);
+        float end = start - pdfFile.getPageLength(currentPage.get(), zoom);
         if (isSwipeVertical()) {
             return start > currentYOffset && end < currentYOffset - getHeight();
         } else {
@@ -1154,7 +1155,7 @@ public class PDFView extends RelativeLayout {
     }
 
     public int getCurrentPage() {
-        return currentPage;
+        return currentPage.get();
     }
 
     public float getCurrentXOffset() {

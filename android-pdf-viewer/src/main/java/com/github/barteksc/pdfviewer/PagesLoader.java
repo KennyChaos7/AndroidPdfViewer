@@ -313,7 +313,7 @@ class PagesLoader {
         float lastYOffset = -yOffset - pdfView.getHeight() - scaledPreloadOffset;
 
         RenderRange range = getRenderRange(page, firstXOffset, firstYOffset, lastXOffset, lastYOffset);
-        Log.e("loadSingleVisible", pdfView.getCurrentPage() + " - " + range.page);
+//        Log.e("loadSingleVisible", pdfView.getCurrentPage() + " - " + range.page);
         /*
          单页模式下，每页的数据实际上绘制在同一个位置的
          由于绘制顺序的是先缩略后全图，导致如果切换页面的时候会先绘制第一页缩略，第二页缩略，然后是第一页的全图，实际上第二页的缩略图就被覆盖
