@@ -165,16 +165,6 @@ class CacheManager {
     /**
      * 清理缓存
      */
-    public void clearCache() {
-        synchronized (thumbnails) {
-            thumbnails.clear();
-        }
-        synchronized (passiveActiveLock) {
-            activeCache.clear();
-            passiveCache.clear();
-        }
-    }
-
     public void recycle() {
         synchronized (passiveActiveLock) {
             for (PagePart part : passiveCache) {

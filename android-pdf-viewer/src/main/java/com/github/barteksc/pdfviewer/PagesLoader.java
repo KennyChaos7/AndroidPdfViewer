@@ -319,7 +319,7 @@ class PagesLoader {
          由于绘制顺序的是先缩略后全图，导致如果切换页面的时候会先绘制第一页缩略，第二页缩略，然后是第一页的全图，实际上第二页的缩略图就被覆盖
          所以单页模式下需要先清除缓存
          */
-        pdfView.cacheManager.clearCache();
+        pdfView.cacheManager.recycle();
         loadThumbnail(range.page);
         calculatePartSize(range.gridSize);
         loadPage(range.page, range.leftTop.row, range.rightBottom.row, range.leftTop.col, range.rightBottom.col, CACHE_SIZE);
