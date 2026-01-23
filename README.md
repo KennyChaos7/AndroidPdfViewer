@@ -1,9 +1,11 @@
 # README
 > 本仓库只用于存储对PdfViewer的个性化修改
 
+- [x] 编译构建pdfium并打包生成so，将其应用在本仓库中
+  - [详细编译办法流程和脚本参考本人的另一个仓库**how_to_build_pdfium_so_on_2026**](https://github.com/KennyChaos7/how_to_build_pdfium_so_on_2026)
 - [x] 逐帧数据绘制完成回调
 - [x] 增加loading页面
-  -  - [ ] 可以考虑是否增加到每个bitmap上
+  - [ ] 可以考虑是否增加到每个bitmap上
 - [x] 增加是否进行pdfView缩略图分块渲染设置
   - 创建PdfView时，**PdfView.isThumbnailSplit(true)** 可以设置为缩略图分块渲染模式
   - 支持在**Constants**中直接修改具体块数，横向**THUMBNAIL_SPLIT_VERTICAL**纵向**THUMBNAIL_SPLIT_LEVEL**

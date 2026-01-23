@@ -23,10 +23,7 @@ public class PdfiumCore {
 
     static {
         try {
-            System.loadLibrary("c++_shared");
-            System.loadLibrary("modpng");
-            System.loadLibrary("modft2");
-            System.loadLibrary("modpdfium");
+            System.loadLibrary("pdfsdk");
             System.loadLibrary("jniPdfium");
         } catch (UnsatisfiedLinkError e) {
             Log.e(TAG, "Native libraries failed to load - " + e);
@@ -78,7 +75,7 @@ public class PdfiumCore {
 
     private native String nativeGetBookmarkTitle(long bookmarkPtr);
 
-    private native long nativeGetBookmarkDestIndex(long docPtr, long bookmarkPtr);
+    private native int nativeGetBookmarkDestIndex(long docPtr, long bookmarkPtr);
 
     private native Size nativeGetPageSizeByIndex(long docPtr, int pageIndex, int dpi);
 
@@ -310,6 +307,7 @@ public class PdfiumCore {
                                  boolean renderAnnot, PdfFrameListener frameListener) {
         synchronized (lock) {
             try {
+                // Log.e(TAG, doc.mNativePagesPtr.get(pageIndex) + "");
                 nativeRenderPageBitmap(doc.mNativePagesPtr.get(pageIndex), bitmap, mCurrentDpi,
                         startX, startY, drawSizeX, drawSizeY, renderAnnot, frameListener);
             } catch (NullPointerException e) {
@@ -376,7 +374,7 @@ public class PdfiumCore {
         PdfDocument.Bookmark bookmark = new PdfDocument.Bookmark();
         bookmark.mNativePtr = bookmarkPtr;
         bookmark.title = nativeGetBookmarkTitle(bookmarkPtr);
-        bookmark.pageIdx = nativeGetBookmarkDestIndex(doc.mNativeDocPtr, bookmarkPtr);
+        bookmark.pageIdx = (long)nativeGetBookmarkDestIndex(doc.mNativeDocPtr, bookmarkPtr);
         tree.add(bookmark);
 
         Long child = nativeGetFirstChildBookmark(doc.mNativeDocPtr, bookmarkPtr);
