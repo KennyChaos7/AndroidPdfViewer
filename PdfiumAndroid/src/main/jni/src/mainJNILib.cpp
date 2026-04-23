@@ -20,6 +20,8 @@ using namespace android;
 #include <fpdf_thumbnail.h>
 #include <fpdf_doc.h>
 #include <fpdf_text.h>
+#include <fpdf_annot.h>
+#include <fpdf_edit.h>
 #include <string>
 #include <vector>
 
@@ -203,9 +205,25 @@ void rgbBitmapTo565(void *source, int sourceStride, void *dest, AndroidBitmapInf
     }
 }
 
-void rgbTextRectF(double left, double top, double right, double bottom)
+void rgbaText(FPDF_PAGE page, FS_RECTF* rectf)
 {
-
+    FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
+    unsigned int r,g,b,a;
+    FPDFAnnot_SetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, 255, 255, 0, 120);
+    // FPDFAnnot_GetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, &r, &g, &b, &a);
+    // LOGI("is supports %d, get= %d, InteriorColor = %u-%u-%u-%u",  FPDFAnnot_IsSupportedSubtype(FPDF_ANNOT_HIGHLIGHT), FPDFAnnot_GetSubtype(anno), r, g, b, a);
+    FS_QUADPOINTSF quadpoints; //= (FS_QUADPOINTSF*)malloc(sizeof(FS_QUADPOINTSF));
+    quadpoints.x1 = rectf->left;
+    quadpoints.y1 = rectf->top;
+    quadpoints.x3 = rectf->right;
+    quadpoints.y3 = rectf->top;
+    quadpoints.x2 = rectf->left;
+    quadpoints.y2 = rectf->bottom;
+    quadpoints.x4 = rectf->right;
+    quadpoints.y4 = rectf->bottom;
+    FPDFAnnot_AppendAttachmentPoints(anno, &quadpoints);
+    FPDFPage_CloseAnnot(anno);   
+    // free(quadpoints);
 }
 
 extern "C"
@@ -828,7 +846,7 @@ extern "C"
         return env->NewObject(clazz, constructorID, deviceX, deviceY);
     }
 
-    JNI_FUNC(jobject, PdfiumCore, nativeSinglePageSearchText)(JNI_ARGS, jlong pagePtr, jint currentPage, jstring txt)
+    JNI_FUNC(jobject, PdfiumCore, nativeSinglePageSearchText)(JNI_ARGS, jlong pagePtr, jint currentPage, jstring txt, jboolean isAutoHighLight)//, jint r, jint g, jint b, jint a
     {
         FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
         jsize txt_size = env->GetStringLength(txt);
@@ -838,6 +856,8 @@ extern "C"
         jclass list_class = env->GetObjectClass(result_list);
         jmethodID list_add_method_id = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
         int current_page = currentPage;
+        bool is_auto_high_light = isAutoHighLight;
+        int result_list_len = 0;
         if (page != nullptr && txt_chars != nullptr && txt_shorts != nullptr)
         {
             FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
@@ -863,19 +883,30 @@ extern "C"
                 else
                 {
                     double left, right, top, bottom;
-                    if (FPDFText_GetRect(text_page, 0, &left, &top, &right, &bottom))
+                    int rect_index = 0;
+                    while (rect_index < result_count_rects && FPDFText_GetRect(text_page, rect_index, &left, &top, &right, &bottom))
                     {
                         LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, left, right, top, bottom);
                         jclass rectF_class = env->FindClass("android/graphics/RectF");
                         jmethodID rectF_constructor = env->GetMethodID(rectF_class, "set", "(FFFF)V");
                         jobject rectF_obj = env->NewObject(rectF_class, rectF_constructor, left, top, right, bottom);
-
+                        if (is_auto_high_light) {
+                            FS_RECTF* rectf = (FS_RECTF*)malloc(sizeof(FS_RECTF));
+                            rectf->left = (float)left;
+                            rectf->top = (float)top;
+                            rectf->right = (float)right;
+                            rectf->bottom = (float)bottom;
+                            rgbaText(page, rectf);
+                            free(rectf);
+                        }
                         jclass text_info_class = env->FindClass("com/shockwave/pdfium/PdfDocument$Text");
                         jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;)V");
                         jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, current_page, txt);
                         env->CallBooleanMethod(result_list, list_add_method_id, text_info_obj);
                         env->DeleteLocalRef(rectF_obj);
                         env->DeleteLocalRef(text_info_obj);
+                        result_list_len++;
+                        rect_index++;
                     }
                 }
             }
@@ -884,7 +915,9 @@ extern "C"
             env->ReleaseStringChars(txt, txt_shorts);
             env->ReleaseStringUTFChars(txt, txt_chars);
         }
-
+        if (result_list_len > 0) {
+            FPDFPage_GenerateContent(page);
+        }
         return result_list;
     }
 

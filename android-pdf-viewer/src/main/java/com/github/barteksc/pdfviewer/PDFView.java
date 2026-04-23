@@ -798,7 +798,7 @@ public class PDFView extends RelativeLayout {
     /**
      * 加载页面
      */
-    private void _loadPages() {
+    public void _loadPages() {
         if (pdfFile == null || renderingHandler == null) {
             return;
         }

@@ -90,7 +90,7 @@ public class PdfiumCore {
     private native Point nativePageCoordsToDevice(long pagePtr, int startX, int startY, int sizeX,
                                                   int sizeY, int rotate, double pageX, double pageY);
 
-    private native ArrayList<PdfDocument.Text> nativeSinglePageSearchText(long pagePtr, int currentPage, String word);
+    private native ArrayList<PdfDocument.Text> nativeSinglePageSearchText(long pagePtr, int currentPage, String word, boolean isAutoHighLight);
 
 
     /* synchronize native methods */
@@ -453,7 +453,7 @@ public class PdfiumCore {
         synchronized (txt) {
             if (txt != null && txt.length() > 0) {
                 long nativePagePtr = doc.mNativePagesPtr.get(pageIndex);
-                list = nativeSinglePageSearchText(nativePagePtr, pageIndex, txt);
+                list = nativeSinglePageSearchText(nativePagePtr, pageIndex, txt, true);
                 for (PdfDocument.Text text : list) {
                     Log.e(TAG, text.toString());
                 }

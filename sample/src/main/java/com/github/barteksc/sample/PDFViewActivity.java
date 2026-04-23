@@ -50,6 +50,7 @@ import org.androidannotations.annotations.OptionsItem;
 import org.androidannotations.annotations.OptionsMenu;
 import org.androidannotations.annotations.ViewById;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @EActivity(R.layout.activity_main)
@@ -128,7 +129,10 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     @OptionsItem(R.id.search)
     void search() {
         // 搜索文字
-        pdfView.searchText("pdf", pdfView.getCurrentPage());
+        ArrayList<PdfDocument.Text> list = pdfView.searchText("pdf", pdfView.getCurrentPage());
+        if (list != null && list.size() > 0) {
+            pdfView._loadPages();
+        }
 //        pdfView.searchText("赤");
     }
 
