@@ -398,4 +398,10 @@ class PdfFile {
 
         return documentPage;
     }
+
+    public ArrayList<PdfDocument.Text> searchText(String txt, int pageIndex) {
+        if (pdfDocument == null)
+            return new ArrayList<>();
+        return pdfiumCore.searchText(pdfDocument, txt, pageIndex);
+    }
 }

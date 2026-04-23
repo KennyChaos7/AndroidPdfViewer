@@ -19,6 +19,7 @@ using namespace android;
 #include <fpdfview.h>
 #include <fpdf_thumbnail.h>
 #include <fpdf_doc.h>
+#include <fpdf_text.h>
 #include <string>
 #include <vector>
 
@@ -31,7 +32,7 @@ static void initLibraryIfNeed()
     Mutex::Autolock lock(sLibraryLock);
     if (sLibraryReferenceCount == 0)
     {
-        LOGD("Init FPDF library");
+        LOGD("----------Init FPDF library-------------");
         FPDF_InitLibrary();
     }
     sLibraryReferenceCount++;
@@ -172,6 +173,13 @@ jobject NewInteger(JNIEnv *env, jint value)
     return env->NewObject(cls, methodID, value);
 }
 
+jobject NewEmptyArrayList(JNIEnv *env)
+{
+    jclass list_class = env->FindClass("java/util/ArrayList");
+    jmethodID list_init_method_id = env->GetMethodID(list_class, "<init>", "()V");
+    return env->NewObject(list_class, list_init_method_id);
+}
+
 uint16_t rgbTo565(rgb *color)
 {
     return ((color->red >> 3) << 11) | ((color->green >> 2) << 5) | (color->blue >> 3);
@@ -193,6 +201,11 @@ void rgbBitmapTo565(void *source, int sourceStride, void *dest, AndroidBitmapInf
         source = (char *)source + sourceStride;
         dest = (char *)dest + info->stride;
     }
+}
+
+void rgbTextRectF(double left, double top, double right, double bottom)
+{
+
 }
 
 extern "C"
@@ -602,15 +615,16 @@ extern "C"
             format = FPDFBitmap_BGRA;
         }
 
+        // LOGD("sizeof(rgb) = %zu", sizeof(rgb));
         FPDF_BITMAP pdfBitmap = FPDFBitmap_CreateEx(canvasHorSize, canvasVerSize, format, tmp, sourceStride);
 
-        // LOGD("Start X: %d", startX);
-        // LOGD("Start Y: %d", startY);
-        // LOGD("Canvas Hor: %d", canvasHorSize);
-        // LOGD("Canvas Ver: %d", canvasVerSize);
-        // LOGD("Draw Hor: %d", drawSizeHor);
-        // LOGD("Draw Ver: %d", drawSizeVer);
-        // LOGD("SourceStride Ver: %d", sourceStride);
+        //  LOGD("Start X: %d", startX);
+        //  LOGD("Start Y: %d", startY);
+        //  LOGD("Canvas Hor: %d", canvasHorSize);
+        //  LOGD("Canvas Ver: %d", canvasVerSize);
+        //  LOGD("Draw Hor: %d", drawSizeHor);
+        //  LOGD("Draw Ver: %d", drawSizeVer);
+        //  LOGD("SourceStride Ver: %d", sourceStride);
 
         if (drawSizeHor < canvasHorSize || drawSizeVer < canvasVerSize)
         {
@@ -812,6 +826,66 @@ extern "C"
         jclass clazz = env->FindClass("android/graphics/Point");
         jmethodID constructorID = env->GetMethodID(clazz, "<init>", "(II)V");
         return env->NewObject(clazz, constructorID, deviceX, deviceY);
+    }
+
+    JNI_FUNC(jobject, PdfiumCore, nativeSinglePageSearchText)(JNI_ARGS, jlong pagePtr, jint currentPage, jstring txt)
+    {
+        FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
+        jsize txt_size = env->GetStringLength(txt);
+        FPDF_WIDESTRING txt_shorts = env->GetStringChars(txt, nullptr);
+        const char *txt_chars = env->GetStringUTFChars(txt, nullptr);
+        jobject result_list = NewEmptyArrayList(env);
+        jclass list_class = env->GetObjectClass(result_list);
+        jmethodID list_add_method_id = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
+        int current_page = currentPage;
+        if (page != nullptr && txt_chars != nullptr && txt_shorts != nullptr)
+        {
+            FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
+            FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, txt_shorts, FPDF_CONSECUTIVE, 0);
+            while (FPDFText_FindNext(target_ptr))
+            {
+                int index_char = FPDFText_GetSchResultIndex(target_ptr);
+                int size_char = FPDFText_GetSchCount(target_ptr);
+                LOGD("find %s ,match !, when char count = %i , and result in character index(%i)", txt_chars, size_char, index_char);
+
+                int result_count_rects = FPDFText_CountRects(text_page, index_char, size_char);
+                // LOGD("FPDFText_CountRects %i", result_count_rects);
+                if (result_count_rects == 0)
+                {
+                    LOGE("text_page is null");
+                    break;
+                }
+                else if (result_count_rects == -1)
+                {
+                    LOGE("index_char is error");
+                    break;
+                }
+                else
+                {
+                    double left, right, top, bottom;
+                    if (FPDFText_GetRect(text_page, 0, &left, &top, &right, &bottom))
+                    {
+                        LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, left, right, top, bottom);
+                        jclass rectF_class = env->FindClass("android/graphics/RectF");
+                        jmethodID rectF_constructor = env->GetMethodID(rectF_class, "set", "(FFFF)V");
+                        jobject rectF_obj = env->NewObject(rectF_class, rectF_constructor, left, top, right, bottom);
+
+                        jclass text_info_class = env->FindClass("com/shockwave/pdfium/PdfDocument$Text");
+                        jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;)V");
+                        jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, current_page, txt);
+                        env->CallBooleanMethod(result_list, list_add_method_id, text_info_obj);
+                        env->DeleteLocalRef(rectF_obj);
+                        env->DeleteLocalRef(text_info_obj);
+                    }
+                }
+            }
+            FPDFText_FindClose(target_ptr);
+            FPDFText_ClosePage(text_page);
+            env->ReleaseStringChars(txt, txt_shorts);
+            env->ReleaseStringUTFChars(txt, txt_chars);
+        }
+
+        return result_list;
     }
 
 } // extern C

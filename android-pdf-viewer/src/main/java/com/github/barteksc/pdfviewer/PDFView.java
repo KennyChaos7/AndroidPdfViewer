@@ -440,6 +440,10 @@ public class PDFView extends RelativeLayout {
         }
     }
 
+    public ArrayList<PdfDocument.Text> searchText(String txt, int currentPage) {
+        return pdfFile.searchText(txt, currentPage);
+    }
+
     public void recycle() {
         waitingDocumentConfigurator = null;
 

@@ -62,7 +62,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     private final static int REQUEST_CODE = 42;
     public static final int PERMISSION_CODE = 42042;
 
-    public static final String SAMPLE_FILE = "sample.pdf";
+    public static final String SAMPLE_FILE = "sample4.pdf";
     public static final String READ_EXTERNAL_STORAGE = "android.permission.READ_EXTERNAL_STORAGE";
 
     // 页码跳转弹窗
@@ -125,6 +125,13 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
         showJumpToDialog();
     }
 
+    @OptionsItem(R.id.search)
+    void search() {
+        // 搜索文字
+        pdfView.searchText("pdf", pdfView.getCurrentPage());
+//        pdfView.searchText("赤");
+    }
+
 
     void launchPicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -157,6 +164,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .onPageChange(this)
                 .enableAnnotationRendering(true)
                 .onLoad(this)
+//                .swipeHorizontal(true)
 //                .scrollHandle(new DefaultScrollHandle(this))
                 .spacing(10) // in dp
                 .onPageError(this)

@@ -25,4 +25,9 @@
         android:icon="@android:drawable/ic_media_next"
         android:title="@string/next"
         app:showAsAction="always"/>
+    <item
+        android:id="@+id/search"
+        android:icon="@android:drawable/ic_menu_search"
+        android:title="@string/search_text"
+        app:showAsAction="always"/>
 </menu>

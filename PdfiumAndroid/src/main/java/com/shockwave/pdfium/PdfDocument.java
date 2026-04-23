@@ -100,6 +100,39 @@ public class PdfDocument {
         }
     }
 
+    public static class Text {
+        private RectF bounds;
+        private int destPageIdx;
+        private String value;
+
+        public Text(RectF bounds, int destPageIdx, String value) {
+            this.bounds = bounds;
+            this.destPageIdx = destPageIdx;
+            this.value = value;
+        }
+
+        public RectF getBounds() {
+            return bounds;
+        }
+
+        public int getDestPageIdx() {
+            return destPageIdx;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        @Override
+        public String toString() {
+            return "Text{" +
+                    "bounds=" + bounds +
+                    ", destPageIdx=" + destPageIdx +
+                    ", value='" + value + '\'' +
+                    '}';
+        }
+    }
+
     /*package*/ PdfDocument() {
     }
 
