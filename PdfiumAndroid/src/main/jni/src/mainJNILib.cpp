@@ -224,6 +224,56 @@ void rgbaText(FPDF_ANNOTATION anno, FS_RECTF* rectf)
     // free(quadpoints);
 }
 
+// 将 UTF-8 字符串转换为 UTF-16LE（unsigned short 数组，末尾带 '\0'）
+std::vector<unsigned short> Utf8ToUtf16LE(const std::string& utf8) {
+    std::vector<unsigned short> result;
+    result.reserve(utf8.size()); // 预分配，中文通常 1 字变 1 单元
+
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(utf8.data());
+    const uint8_t* end = p + utf8.size();
+
+    while (p < end) {
+        uint32_t codepoint = 0;
+        if ((*p & 0x80) == 0) {
+            // 1 字节 ASCII
+            codepoint = *p++;
+        } else if ((*p & 0xE0) == 0xC0) {
+            // 2 字节
+            codepoint = (*p++ & 0x1F) << 6;
+            codepoint |= (*p++ & 0x3F);
+        } else if ((*p & 0xF0) == 0xE0) {
+            // 3 字节（绝大多数中文在这里）
+            codepoint = (*p++ & 0x0F) << 12;
+            codepoint |= (*p++ & 0x3F) << 6;
+            codepoint |= (*p++ & 0x3F);
+        } else if ((*p & 0xF8) == 0xF0) {
+            // 4 字节（增补字符，如部分生僻字、emoji）
+            codepoint = (*p++ & 0x07) << 18;
+            codepoint |= (*p++ & 0x3F) << 12;
+            codepoint |= (*p++ & 0x3F) << 6;
+            codepoint |= (*p++ & 0x3F);
+        } else {
+            // 非法序列，跳过
+            ++p;
+            continue;
+        }
+
+        // 将 codepoint 编码为 UTF-16 (Little Endian)
+        if (codepoint < 0x10000) {
+            result.push_back(static_cast<unsigned short>(codepoint));
+        } else {
+            // 代理对
+            codepoint -= 0x10000;
+            result.push_back(static_cast<unsigned short>((codepoint >> 10) + 0xD800));
+            result.push_back(static_cast<unsigned short>((codepoint & 0x3FF) + 0xDC00));
+        }
+    }
+
+    result.push_back(0); // null 终止
+    return result;
+}
+
+
 extern "C"
 { // For JNI support
 
@@ -848,18 +898,19 @@ extern "C"
     {
         FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
         jsize txt_size = env->GetStringLength(txt);
-        FPDF_WIDESTRING txt_shorts = env->GetStringChars(txt, nullptr);
         const char *txt_chars = env->GetStringUTFChars(txt, nullptr);
+        std::string text_str(txt_chars);
+        auto text_utf16 = Utf8ToUtf16LE(text_str);
         jobject result_list = NewEmptyArrayList(env);
         jclass list_class = env->GetObjectClass(result_list);
         jmethodID list_add_method_id = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
         int current_page = currentPage;
         bool is_auto_high_light = isAutoHighLight;
         int result_list_len = 0;
-        if (page != nullptr && txt_chars != nullptr && txt_shorts != nullptr)
+        if (page != nullptr && txt_chars != nullptr)
         {
             FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
-            FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, txt_shorts, FPDF_CONSECUTIVE, 0);
+            FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, text_utf16.data(), 0, 0);
             FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
             while (FPDFText_FindNext(target_ptr))
             {
@@ -913,7 +964,6 @@ extern "C"
             FPDFPage_CloseAnnot(anno);   
             FPDFText_FindClose(target_ptr);
             FPDFText_ClosePage(text_page);
-            env->ReleaseStringChars(txt, txt_shorts);
             env->ReleaseStringUTFChars(txt, txt_chars);
         }
         if (result_list_len > 0) {
