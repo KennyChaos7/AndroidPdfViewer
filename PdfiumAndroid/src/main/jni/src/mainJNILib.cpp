@@ -205,9 +205,8 @@ void rgbBitmapTo565(void *source, int sourceStride, void *dest, AndroidBitmapInf
     }
 }
 
-void rgbaText(FPDF_PAGE page, FS_RECTF* rectf)
+void rgbaText(FPDF_ANNOTATION anno, FS_RECTF* rectf)
 {
-    FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
     unsigned int r,g,b,a;
     FPDFAnnot_SetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, 255, 255, 0, 120);
     // FPDFAnnot_GetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, &r, &g, &b, &a);
@@ -222,7 +221,6 @@ void rgbaText(FPDF_PAGE page, FS_RECTF* rectf)
     quadpoints.x4 = rectf->right;
     quadpoints.y4 = rectf->bottom;
     FPDFAnnot_AppendAttachmentPoints(anno, &quadpoints);
-    FPDFPage_CloseAnnot(anno);   
     // free(quadpoints);
 }
 
@@ -862,6 +860,7 @@ extern "C"
         {
             FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
             FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, txt_shorts, FPDF_CONSECUTIVE, 0);
+            FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
             while (FPDFText_FindNext(target_ptr))
             {
                 int index_char = FPDFText_GetSchResultIndex(target_ptr);
@@ -896,7 +895,7 @@ extern "C"
                             rectf->top = (float)top;
                             rectf->right = (float)right;
                             rectf->bottom = (float)bottom;
-                            rgbaText(page, rectf);
+                            rgbaText(anno, rectf);
                             free(rectf);
                         }
                         jclass text_info_class = env->FindClass("com/shockwave/pdfium/PdfDocument$Text");
@@ -910,6 +909,8 @@ extern "C"
                     }
                 }
             }
+            LOGD("find %s finish !", txt_chars);
+            FPDFPage_CloseAnnot(anno);   
             FPDFText_FindClose(target_ptr);
             FPDFText_ClosePage(text_page);
             env->ReleaseStringChars(txt, txt_shorts);
@@ -919,6 +920,28 @@ extern "C"
             FPDFPage_GenerateContent(page);
         }
         return result_list;
+    }
+
+    JNI_FUNC(void, PdfiumCore, nativeCloseSearchText)(JNI_ARGS, jlong pagePtr)
+    {
+        FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
+        int anno_count = FPDFPage_GetAnnotCount(page);
+        if (anno_count > 0) {
+            int i = 0;
+            while(i < anno_count) {
+                FPDF_ANNOTATION anno = FPDFPage_GetAnnot(page, i);
+                if (anno) {
+                    int anno_index = FPDFPage_GetAnnotIndex(page, anno);
+                    if (anno_index != -1) {
+                        FPDFPage_RemoveAnnot(page, anno_index);
+                    }
+                }
+                i++;
+            }
+           
+        }
+        LOGI("history annot count = %d", anno_count);
+        FPDFPage_GenerateContent(page);
     }
 
 } // extern C

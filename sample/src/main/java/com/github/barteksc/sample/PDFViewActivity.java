@@ -69,6 +69,9 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     // 页码跳转弹窗
     private AlertDialog jumpToDialog;
 
+    // 搜索文本弹窗
+    private AlertDialog searchTextDialog;
+
     @ViewById
     PDFView pdfView;
 
@@ -128,12 +131,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
 
     @OptionsItem(R.id.search)
     void search() {
-        // 搜索文字
-        ArrayList<PdfDocument.Text> list = pdfView.searchText("pdf", pdfView.getCurrentPage());
-        if (list != null && list.size() > 0) {
-            pdfView._loadPages();
-        }
-//        pdfView.searchText("赤");
+        showSearchTextDialog();
     }
 
 
@@ -214,6 +212,32 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                         jumpToDialog.dismiss();
                     }
                 }
+            }
+        });
+    }
+
+    /**
+     * 页码跳转弹窗设置
+     */
+    private void showSearchTextDialog() {
+        if (searchTextDialog == null) {
+            searchTextDialog = new AlertDialog.Builder(this).setView(R.layout.dialog_search_text).create();
+            searchTextDialog.setCanceledOnTouchOutside(true);
+        }
+        searchTextDialog.show();
+        searchTextDialog.findViewById(R.id.btn_ok).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EditText editText = searchTextDialog.findViewById(R.id.edit_text);
+                if (editText != null && editText.getText().length() > 0) {
+                    // 搜索文字
+                    ArrayList<PdfDocument.Text> list = pdfView.searchText(editText.getText().toString(), pdfView.getCurrentPage());
+                    if (list != null && list.size() > 0) {
+                       Log.e(TAG, list.toString());
+                    }
+                    pdfView._loadPages();
+                }
+                searchTextDialog.dismiss();
             }
         });
     }

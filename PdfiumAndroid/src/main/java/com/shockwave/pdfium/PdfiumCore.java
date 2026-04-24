@@ -90,8 +90,21 @@ public class PdfiumCore {
     private native Point nativePageCoordsToDevice(long pagePtr, int startX, int startY, int sizeX,
                                                   int sizeY, int rotate, double pageX, double pageY);
 
+    /**
+     * 单页搜索文字
+     * @param pagePtr
+     * @param currentPage
+     * @param word              要搜索的文字
+     * @param isAutoHighLight   是否进行自动高亮化处理
+     * @return
+     */
     private native ArrayList<PdfDocument.Text> nativeSinglePageSearchText(long pagePtr, int currentPage, String word, boolean isAutoHighLight);
 
+    /**
+     * 清除黑亮搜索结果
+     * @param pagePtr
+     */
+    private native void nativeCloseSearchText(long pagePtr);
 
     /* synchronize native methods */
     private static final Object lock = new Object();
@@ -451,12 +464,11 @@ public class PdfiumCore {
     public ArrayList<PdfDocument.Text> searchText(PdfDocument doc, String txt, int pageIndex) {
         ArrayList<PdfDocument.Text> list = new ArrayList<>();
         synchronized (txt) {
-            if (txt != null && txt.length() > 0) {
-                long nativePagePtr = doc.mNativePagesPtr.get(pageIndex);
-                list = nativeSinglePageSearchText(nativePagePtr, pageIndex, txt, true);
-                for (PdfDocument.Text text : list) {
-                    Log.e(TAG, text.toString());
-                }
+            long nativePagePtr = doc.mNativePagesPtr.get(pageIndex);
+            nativeCloseSearchText(nativePagePtr);
+            list = nativeSinglePageSearchText(nativePagePtr, pageIndex, txt, true);
+            for (PdfDocument.Text text : list) {
+                Log.e(TAG, text.toString());
             }
             return list;
         }
