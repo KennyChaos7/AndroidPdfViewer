@@ -795,10 +795,20 @@ public class PDFView extends RelativeLayout {
         }
     }
 
+    public void reloadPage() {
+        if (isSinglePageMode()) {
+            _loadPages();
+        }
+        else{
+            cacheManager.makeReset();
+            _loadPages();
+        }
+    }
+
     /**
      * 加载页面
      */
-    public void _loadPages() {
+    void _loadPages() {
         if (pdfFile == null || renderingHandler == null) {
             return;
         }

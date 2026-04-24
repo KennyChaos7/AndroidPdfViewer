@@ -171,9 +171,9 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .spacing(10) // in dp
                 .onPageError(this)
                 .pageFitPolicy(FitPolicy.BOTH)
-                .showLoadingDialog(true) //显示首页加载的Loading
-                .isThumbnailSplit(true)// 缩略图分块
-                .singlePageMode(true)// 单页模式
+                .showLoadingDialog(false) //显示首页加载的Loading
+                .isThumbnailSplit(false)// 缩略图分块
+                .singlePageMode(false)// 单页模式
                 .load();
     }
 
@@ -235,7 +235,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                     if (list != null && list.size() > 0) {
                        Log.e(TAG, list.toString());
                     }
-                    pdfView._loadPages();
+                    pdfView.reloadPage();
                 }
                 searchTextDialog.dismiss();
             }

@@ -57,6 +57,13 @@ class CacheManager {
         }
     }
 
+    public void makeReset() {
+        synchronized (passiveActiveLock) {
+            passiveCache.clear();
+            activeCache.clear();
+        }
+    }
+
     public void makeANewSet() {
         synchronized (passiveActiveLock) {
             passiveCache.addAll(activeCache);
