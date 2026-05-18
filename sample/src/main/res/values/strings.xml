@@ -9,4 +9,5 @@
     <string name="jump_to">Jump to</string>
     <string name="hint_jump_to">Please input page number …</string>
     <string name="hint_search_text">Please input text …</string>
+    <string name="checkbox_is_search_whole_pdf">Is Search whole pdf file</string>
 </resources>

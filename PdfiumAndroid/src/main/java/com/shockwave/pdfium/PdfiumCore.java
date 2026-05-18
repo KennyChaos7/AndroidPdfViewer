@@ -98,13 +98,39 @@ public class PdfiumCore {
      * @param isAutoHighLight   是否进行自动高亮化处理
      * @return
      */
-    private native ArrayList<PdfDocument.Text> nativeSinglePageSearchText(long pagePtr, int currentPage, String word, boolean isAutoHighLight);
+    private native ArrayList<PdfDocument.Text> nativePageSearchText(long pagePtr, int currentPage, String word, boolean isAutoHighLight);
+
 
     /**
-     * 清除黑亮搜索结果
+     * 整个文档的搜索文字
+     * @param docPtr
+     * @param word              要搜索的文字
+     * @param isAutoHighLight   是否自动进行高亮处理
+     * @return
+     * TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+     */
+    private native ArrayList<PdfDocument.Text> nativePdfDocumentSearchText(long docPtr, String word, boolean isAutoHighLight);
+    /**
+     * 设置高亮显示的颜色
+     * 0~255
+     * @param red
+     * @param green
+     * @param blue
+     * @param alpha
+     */
+    private native void nativeSetHighLightColor(int red, int  green, int blue, int alpha);
+    /**
+     * 清除整个文件黑亮搜索结果
+     * @param docPtr
+     * TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+     */
+    private native void nativeCloseSearchText(long docPtr);
+
+    /**
+     * 清除某一页上黑亮搜索结果
      * @param pagePtr
      */
-    private native void nativeCloseSearchText(long pagePtr);
+    private native void nativeClosePageSearchText(long pagePtr);
 
     /* synchronize native methods */
     private static final Object lock = new Object();
@@ -146,7 +172,7 @@ public class PdfiumCore {
         document.parcelFileDescriptor = fd;
         synchronized (lock) {
             document.mNativeDocPtr = nativeOpenDocument(getNumFd(fd), password);
-        }
+         }
 
         return document;
     }
@@ -465,12 +491,66 @@ public class PdfiumCore {
         ArrayList<PdfDocument.Text> list = new ArrayList<>();
         synchronized (txt) {
             long nativePagePtr = doc.mNativePagesPtr.get(pageIndex);
-            nativeCloseSearchText(nativePagePtr);
-            list = nativeSinglePageSearchText(nativePagePtr, pageIndex, txt, true);
+            nativeClosePageSearchText(nativePagePtr);
+            list = nativePageSearchText(nativePagePtr, pageIndex, txt, true);
             for (PdfDocument.Text text : list) {
                 Log.e(TAG, text.toString());
             }
             return list;
         }
+    }
+
+    public ArrayList<PdfDocument.Text> searchText(PdfDocument doc, String txt) {
+        ArrayList<PdfDocument.Text> list = new ArrayList<>();
+        synchronized (txt) {
+            //TODO 使用jni层的全文搜索方法，而不是用循环的方式调用单页搜索的方法进行
+//            nativeCloseSearchText(doc.mNativeDocPtr);
+//            try {
+//                Thread.sleep(200 * doc.mNativePagesPtr.size());
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+//            list = nativePdfDocumentSearchText(doc.mNativeDocPtr, txt, true);
+
+            // 进行了延迟的设置，但本身可能并不需要延迟只需要从上到下按顺序执行即可
+//            try {
+//                int index = 0;
+//                while (index < doc.mNativePagesPtr.size()) {
+//                    nativeClosePageSearchText(doc.mNativePagesPtr.get(index));
+//                    index++;
+//                    Thread.sleep(200);
+//                }
+//                index = 0;
+//                while (index < doc.mNativePagesPtr.size()) {
+//                    list.addAll(nativeSinglePageSearchText(doc.mNativePagesPtr.get(index), index, txt, true));
+//                    index++;
+//                    Thread.sleep(200);
+//                }
+//            }
+//            catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+
+            // 无延迟版本
+            int index = 0;
+            while (index < doc.mNativePagesPtr.size()) {
+                nativeClosePageSearchText(doc.mNativePagesPtr.get(index));
+                index++;
+            }
+            index = 0;
+            while (index < doc.mNativePagesPtr.size()) {
+                list.addAll(nativePageSearchText(doc.mNativePagesPtr.get(index), index, txt, true));
+                index++;
+            }
+
+            for (PdfDocument.Text text : list) {
+                Log.e(TAG, text.toString());
+            }
+            return list;
+        }
+    }
+
+    public void setHighLightColor(int red, int green, int blue, int alpha) {
+        nativeSetHighLightColor(red, green, blue, alpha);
     }
 }

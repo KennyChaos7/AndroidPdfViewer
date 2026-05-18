@@ -31,6 +31,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -63,7 +64,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     private final static int REQUEST_CODE = 42;
     public static final int PERMISSION_CODE = 42042;
 
-    public static final String SAMPLE_FILE = "sample4.pdf";
+    public static final String SAMPLE_FILE = "sample5.pdf";
     public static final String READ_EXTERNAL_STORAGE = "android.permission.READ_EXTERNAL_STORAGE";
 
     // 页码跳转弹窗
@@ -131,6 +132,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
 
     @OptionsItem(R.id.search)
     void search() {
+        // 弹出搜索框
         showSearchTextDialog();
     }
 
@@ -230,8 +232,15 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
             public void onClick(View v) {
                 EditText editText = searchTextDialog.findViewById(R.id.edit_text);
                 if (editText != null && editText.getText().length() > 0) {
-                    // 搜索文字
-                    ArrayList<PdfDocument.Text> list = pdfView.searchText(editText.getText().toString(), pdfView.getCurrentPage());
+                    CheckBox checkBox = searchTextDialog.findViewById(R.id.cb_whole_pdf);
+                    ArrayList<PdfDocument.Text> list;
+                    // 是否进行全页搜索
+                    if (!checkBox.isChecked()) {
+                        list = pdfView.searchText(editText.getText().toString(), pdfView.getCurrentPage());
+                    }
+                    else {
+                        list = pdfView.searchText(editText.getText().toString());
+                    }
                     if (list != null && list.size() > 0) {
                        Log.e(TAG, list.toString());
                     }

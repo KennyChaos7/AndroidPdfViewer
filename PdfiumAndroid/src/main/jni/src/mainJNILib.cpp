@@ -58,6 +58,13 @@ struct rgb
     uint8_t blue;
 };
 
+typedef struct text_rec
+{
+    int pageIndex;
+    double left, top, right, bottom;
+    std::vector<unsigned short> txt;
+} TEXT_RECTF;
+
 class DocumentFile
 {
 private:
@@ -205,9 +212,9 @@ void rgbBitmapTo565(void *source, int sourceStride, void *dest, AndroidBitmapInf
     }
 }
 
-void rgbaText(FPDF_ANNOTATION anno, FS_RECTF* rectf)
+void rgbaText(FPDF_ANNOTATION anno, FS_RECTF *rectf)
 {
-    unsigned int r,g,b,a;
+    unsigned int r, g, b, a;
     FPDFAnnot_SetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, 255, 255, 0, 120);
     // FPDFAnnot_GetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, &r, &g, &b, &a);
     // LOGI("is supports %d, get= %d, InteriorColor = %u-%u-%u-%u",  FPDFAnnot_IsSupportedSubtype(FPDF_ANNOT_HIGHLIGHT), FPDFAnnot_GetSubtype(anno), r, g, b, a);
@@ -224,44 +231,98 @@ void rgbaText(FPDF_ANNOTATION anno, FS_RECTF* rectf)
     // free(quadpoints);
 }
 
+bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> txt, std::vector<TEXT_RECTF> &data)
+{
+    data.clear();
+    FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
+    FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, txt.data(), 0, 0);
+    while (FPDFText_FindNext(target_ptr))
+    {
+        int index_char = FPDFText_GetSchResultIndex(target_ptr);
+        int size_char = FPDFText_GetSchCount(target_ptr);
+        LOGD("match !, when char count = %i , and result in character index(%i)", size_char, index_char);
+        int result_count_rects = FPDFText_CountRects(text_page, index_char, size_char);
+        // LOGD("FPDFText_CountRects %i", result_count_rects);
+        if (result_count_rects == 0)
+        {
+            LOGE("text_page is null");
+            return false;
+        }
+        else if (result_count_rects == -1)
+        {
+            LOGE("index_char is error");
+            return false;
+        }
+        else
+        {
+            double left, right, top, bottom;
+            int rect_index = 0;
+            while (rect_index < result_count_rects && FPDFText_GetRect(text_page, rect_index, &left, &top, &right, &bottom))
+            {
+                // LOGD("match !, char rectf=(%f, %f, %f, %f)", left, right, top, bottom);
+                data.push_back({pageIndex, left, top, right, bottom, txt});
+                rect_index++;
+            }
+        }
+    }
+    LOGD("findTextOnPage finish in page %d! and size = %lu", pageIndex, data.size());
+    FPDFText_FindClose(target_ptr);
+    FPDFText_ClosePage(text_page);
+    return true;
+}
+
 // 将 UTF-8 字符串转换为 UTF-16LE（unsigned short 数组，末尾带 '\0'）
-std::vector<unsigned short> Utf8ToUtf16LE(const std::string& utf8) {
+std::vector<unsigned short> Utf8ToUtf16LE(const std::string &utf8)
+{
     std::vector<unsigned short> result;
     result.reserve(utf8.size()); // 预分配，中文通常 1 字变 1 单元
 
-    const uint8_t* p = reinterpret_cast<const uint8_t*>(utf8.data());
-    const uint8_t* end = p + utf8.size();
+    const uint8_t *p = reinterpret_cast<const uint8_t *>(utf8.data());
+    const uint8_t *end = p + utf8.size();
 
-    while (p < end) {
+    while (p < end)
+    {
         uint32_t codepoint = 0;
-        if ((*p & 0x80) == 0) {
+        if ((*p & 0x80) == 0)
+        {
             // 1 字节 ASCII
             codepoint = *p++;
-        } else if ((*p & 0xE0) == 0xC0) {
+        }
+        else if ((*p & 0xE0) == 0xC0)
+        {
             // 2 字节
             codepoint = (*p++ & 0x1F) << 6;
             codepoint |= (*p++ & 0x3F);
-        } else if ((*p & 0xF0) == 0xE0) {
+        }
+        else if ((*p & 0xF0) == 0xE0)
+        {
             // 3 字节（绝大多数中文在这里）
             codepoint = (*p++ & 0x0F) << 12;
             codepoint |= (*p++ & 0x3F) << 6;
             codepoint |= (*p++ & 0x3F);
-        } else if ((*p & 0xF8) == 0xF0) {
+        }
+        else if ((*p & 0xF8) == 0xF0)
+        {
             // 4 字节（增补字符，如部分生僻字、emoji）
             codepoint = (*p++ & 0x07) << 18;
             codepoint |= (*p++ & 0x3F) << 12;
             codepoint |= (*p++ & 0x3F) << 6;
             codepoint |= (*p++ & 0x3F);
-        } else {
+        }
+        else
+        {
             // 非法序列，跳过
             ++p;
             continue;
         }
 
         // 将 codepoint 编码为 UTF-16 (Little Endian)
-        if (codepoint < 0x10000) {
+        if (codepoint < 0x10000)
+        {
             result.push_back(static_cast<unsigned short>(codepoint));
-        } else {
+        }
+        else
+        {
             // 代理对
             codepoint -= 0x10000;
             result.push_back(static_cast<unsigned short>((codepoint >> 10) + 0xD800));
@@ -272,7 +333,6 @@ std::vector<unsigned short> Utf8ToUtf16LE(const std::string& utf8) {
     result.push_back(0); // null 终止
     return result;
 }
-
 
 extern "C"
 { // For JNI support
@@ -710,7 +770,7 @@ extern "C"
 
         flags |= FPDF_RENDER_LIMITEDIMAGECACHE;
 
-        FPDFBitmap_FillRect(pdfBitmap, baseX, baseY, baseHorSize, baseVerSize, 0x000000);
+        FPDFBitmap_FillRect(pdfBitmap, baseX, baseY, baseHorSize, baseVerSize, 0xFFFFFFFF);
 
         FPDF_RenderPageBitmap(pdfBitmap, page, startX, startY, (int)drawSizeHor, (int)drawSizeVer, 0, flags);
 
@@ -894,7 +954,66 @@ extern "C"
         return env->NewObject(clazz, constructorID, deviceX, deviceY);
     }
 
-    JNI_FUNC(jobject, PdfiumCore, nativeSinglePageSearchText)(JNI_ARGS, jlong pagePtr, jint currentPage, jstring txt, jboolean isAutoHighLight)//, jint r, jint g, jint b, jint a
+    //TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+    JNI_FUNC(jobject, PdfiumCore, nativePdfDocumentSearchText)(JNI_ARGS, jlong docPtr, jstring txt, jboolean isAutoHighLight)
+    {
+        DocumentFile *doc = reinterpret_cast<DocumentFile *>(docPtr);
+        jsize txt_size = env->GetStringLength(txt);
+        const char *txt_chars = env->GetStringUTFChars(txt, nullptr);
+        std::string text_str(txt_chars);
+        auto text_utf16 = Utf8ToUtf16LE(text_str);
+        jobject result_list = NewEmptyArrayList(env);
+        jclass list_class = env->GetObjectClass(result_list);
+        jmethodID list_add_method_id = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
+        bool is_auto_high_light = isAutoHighLight;
+        if (doc != nullptr && txt_chars != nullptr)
+        {
+            FPDF_DOCUMENT pdfDoc = doc->pdfDocument;
+            int page_count = FPDF_GetPageCount(pdfDoc);
+            int page_index = 0;
+            while (page_index < page_count)
+            {
+                FPDF_PAGE page = FPDF_LoadPage(pdfDoc, page_index);
+                FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
+                if (page)
+                {
+                    std::vector<TEXT_RECTF> text_rectf_list;
+                    if (findTextOnPage(page, page_index, text_utf16, text_rectf_list))
+                    {
+
+                        for (int i = 0; i < text_rectf_list.size(); i++)
+                        {
+                            TEXT_RECTF text_rectf = text_rectf_list[i];
+                            // LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
+                            jclass rectF_class = env->FindClass("android/graphics/RectF");
+                            jmethodID rectF_constructor = env->GetMethodID(rectF_class, "set", "(FFFF)V");
+                            jobject rectF_obj = env->NewObject(rectF_class, rectF_constructor, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
+                            if (is_auto_high_light)
+                            {
+                                FS_RECTF *rectf = (FS_RECTF *)malloc(sizeof(FS_RECTF));
+                                rectf->left = (float)text_rectf.left;
+                                rectf->top = (float)text_rectf.top;
+                                rectf->right = (float)text_rectf.right;
+                                rectf->bottom = (float)text_rectf.bottom;
+                                // rgbaText(anno, rectf, sNormalHighLightRgba);
+                                rgbaText(anno, rectf);
+                                free(rectf);
+                            }
+                        }
+                    }
+                    LOGD("find %s finish in page %d! size = %lu", txt_chars, page_index, text_rectf_list.size());
+                    page_index++;
+                }
+                FPDFPage_CloseAnnot(anno);
+                FPDFPage_GenerateContent(page);
+            }
+        }
+        env->ReleaseStringUTFChars(txt, txt_chars);
+        return result_list;
+    }
+
+    
+    JNI_FUNC(jobject, PdfiumCore, nativePageSearchText)(JNI_ARGS, jlong pagePtr, jint currentPage, jstring txt, jboolean isAutoHighLight)
     {
         FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
         jsize txt_size = env->GetStringLength(txt);
@@ -906,92 +1025,113 @@ extern "C"
         jmethodID list_add_method_id = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
         int current_page = currentPage;
         bool is_auto_high_light = isAutoHighLight;
-        int result_list_len = 0;
         if (page != nullptr && txt_chars != nullptr)
         {
-            FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
-            FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, text_utf16.data(), 0, 0);
-            FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
-            while (FPDFText_FindNext(target_ptr))
+            std::vector<TEXT_RECTF> text_rectf_list;
+            if (findTextOnPage(page, currentPage, text_utf16, text_rectf_list))
             {
-                int index_char = FPDFText_GetSchResultIndex(target_ptr);
-                int size_char = FPDFText_GetSchCount(target_ptr);
-                LOGD("find %s ,match !, when char count = %i , and result in character index(%i)", txt_chars, size_char, index_char);
-
-                int result_count_rects = FPDFText_CountRects(text_page, index_char, size_char);
-                // LOGD("FPDFText_CountRects %i", result_count_rects);
-                if (result_count_rects == 0)
+                FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
+                for (int i = 0; i < text_rectf_list.size(); i++)
                 {
-                    LOGE("text_page is null");
-                    break;
-                }
-                else if (result_count_rects == -1)
-                {
-                    LOGE("index_char is error");
-                    break;
-                }
-                else
-                {
-                    double left, right, top, bottom;
-                    int rect_index = 0;
-                    while (rect_index < result_count_rects && FPDFText_GetRect(text_page, rect_index, &left, &top, &right, &bottom))
+                    TEXT_RECTF text_rectf = text_rectf_list[i];
+                    LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
+                    jclass rectF_class = env->FindClass("android/graphics/RectF");
+                    jmethodID rectF_constructor = env->GetMethodID(rectF_class, "set", "(FFFF)V");
+                    jobject rectF_obj = env->NewObject(rectF_class, rectF_constructor, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
+                    if (is_auto_high_light)
                     {
-                        LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, left, right, top, bottom);
-                        jclass rectF_class = env->FindClass("android/graphics/RectF");
-                        jmethodID rectF_constructor = env->GetMethodID(rectF_class, "set", "(FFFF)V");
-                        jobject rectF_obj = env->NewObject(rectF_class, rectF_constructor, left, top, right, bottom);
-                        if (is_auto_high_light) {
-                            FS_RECTF* rectf = (FS_RECTF*)malloc(sizeof(FS_RECTF));
-                            rectf->left = (float)left;
-                            rectf->top = (float)top;
-                            rectf->right = (float)right;
-                            rectf->bottom = (float)bottom;
-                            rgbaText(anno, rectf);
-                            free(rectf);
-                        }
-                        jclass text_info_class = env->FindClass("com/shockwave/pdfium/PdfDocument$Text");
-                        jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;)V");
-                        jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, current_page, txt);
-                        env->CallBooleanMethod(result_list, list_add_method_id, text_info_obj);
-                        env->DeleteLocalRef(rectF_obj);
-                        env->DeleteLocalRef(text_info_obj);
-                        result_list_len++;
-                        rect_index++;
+                        FS_RECTF *rectf = (FS_RECTF *)malloc(sizeof(FS_RECTF));
+                        rectf->left = (float)text_rectf.left;
+                        rectf->top = (float)text_rectf.top;
+                        rectf->right = (float)text_rectf.right;
+                        rectf->bottom = (float)text_rectf.bottom;
+                        // rgbaText(anno, rectf, sNormalHighLightRgba);
+                        rgbaText(anno, rectf);
+                        free(rectf);
                     }
                 }
+                FPDFPage_CloseAnnot(anno);
             }
-            LOGD("find %s finish !", txt_chars);
-            FPDFPage_CloseAnnot(anno);   
-            FPDFText_FindClose(target_ptr);
-            FPDFText_ClosePage(text_page);
-            env->ReleaseStringUTFChars(txt, txt_chars);
-        }
-        if (result_list_len > 0) {
+            LOGD("find %s finish in page %d size = %lu", txt_chars, current_page, text_rectf_list.size());
             FPDFPage_GenerateContent(page);
         }
+        env->ReleaseStringUTFChars(txt, txt_chars);
         return result_list;
     }
 
-    JNI_FUNC(void, PdfiumCore, nativeCloseSearchText)(JNI_ARGS, jlong pagePtr)
+    //TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+    JNI_FUNC(void, PdfiumCore, nativeCloseSearchText)(JNI_ARGS, jlong docPtr)
+    {
+        DocumentFile *doc = reinterpret_cast<DocumentFile *>(docPtr);
+        if (doc == nullptr)
+        {
+            LOGE("doc history error");
+            return;
+        }
+        FPDF_DOCUMENT pdfDoc = doc->pdfDocument;
+        int page_count = FPDF_GetPageCount(pdfDoc);
+        int page_index = 0;
+        while (page_index < page_count)
+        {
+            FPDF_PAGE page = FPDF_LoadPage(pdfDoc, page_index);
+            if (page == nullptr)
+            {
+                LOGE("doc find page history error");
+                return;
+            }
+            int anno_count = FPDFPage_GetAnnotCount(page);
+            if (anno_count > 0)
+            {
+                int i = 0;
+                while (i < anno_count)
+                {
+                    FPDF_ANNOTATION anno = FPDFPage_GetAnnot(page, i);
+                    if (anno)
+                    {
+                        int anno_index = FPDFPage_GetAnnotIndex(page, anno);
+                        if (anno_index != -1)
+                        {
+                            FPDFPage_RemoveAnnot(page, anno_index);
+                        }
+                    }
+                    i++;
+                }
+            }
+            FPDFPage_GenerateContent(page);
+            LOGI("doc history page %d annot count = %d", page_index, anno_count);
+            page_index++;
+        }
+    }
+
+
+    JNI_FUNC(void, PdfiumCore, nativeClosePageSearchText)(JNI_ARGS, jlong pagePtr)
     {
         FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
+        if (page == nullptr)
+        {
+            LOGE("page history error");
+            return;
+        }
         int anno_count = FPDFPage_GetAnnotCount(page);
-        if (anno_count > 0) {
+        if (anno_count > 0)
+        {
             int i = 0;
-            while(i < anno_count) {
+            while (i < anno_count)
+            {
                 FPDF_ANNOTATION anno = FPDFPage_GetAnnot(page, i);
-                if (anno) {
+                if (anno)
+                {
                     int anno_index = FPDFPage_GetAnnotIndex(page, anno);
-                    if (anno_index != -1) {
+                    if (anno_index != -1)
+                    {
                         FPDFPage_RemoveAnnot(page, anno_index);
                     }
                 }
                 i++;
             }
-           
         }
-        LOGI("history annot count = %d", anno_count);
         FPDFPage_GenerateContent(page);
+        LOGI("page history annot count = %d", anno_count);
     }
 
 } // extern C

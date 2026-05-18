@@ -277,6 +277,7 @@ public class PDFView extends RelativeLayout {
         debugPaint.setStyle(Style.STROKE);
 
         pdfiumCore = new PdfiumCore(context);
+//        pdfiumCore.setHighLightColor(255, 0, 0, 120);
         setWillNotDraw(false);
     }
 
@@ -444,6 +445,11 @@ public class PDFView extends RelativeLayout {
         return pdfFile.searchText(txt, currentPage);
     }
 
+    public ArrayList<PdfDocument.Text> searchText(String txt) {
+        return pdfFile.searchText(txt);
+    }
+
+
     public void recycle() {
         waitingDocumentConfigurator = null;
 
@@ -459,7 +465,7 @@ public class PDFView extends RelativeLayout {
             decodingAsyncTask.cancel(true);
         }
 
-        // Clear caches
+        // Clear cachesre
         cacheManager.recycle();
 
         if (scrollHandle != null && isScrollHandleInit) {
@@ -467,6 +473,7 @@ public class PDFView extends RelativeLayout {
         }
 
         if (pdfFile != null) {
+            Log.i("", " ------------ ");
             pdfFile.dispose();
             pdfFile = null;
         }
@@ -800,7 +807,7 @@ public class PDFView extends RelativeLayout {
             _loadPages();
         }
         else{
-            cacheManager.makeReset();
+            cacheManager.recycle();
             _loadPages();
         }
     }
