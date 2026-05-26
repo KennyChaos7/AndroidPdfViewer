@@ -32,6 +32,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.HandlerThread;
+import android.os.ParcelFileDescriptor;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.widget.RelativeLayout;
@@ -58,6 +59,7 @@ import com.github.barteksc.pdfviewer.source.FileSource;
 import com.github.barteksc.pdfviewer.source.InputStreamSource;
 import com.github.barteksc.pdfviewer.source.UriSource;
 import com.github.barteksc.pdfviewer.util.Constants;
+import com.github.barteksc.pdfviewer.util.FileUtils;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
 import com.github.barteksc.pdfviewer.util.MathUtils;
 import com.github.barteksc.pdfviewer.util.SnapEdge;
@@ -68,6 +70,8 @@ import com.shockwave.pdfium.util.Size;
 import com.shockwave.pdfium.util.SizeF;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -449,6 +453,21 @@ public class PDFView extends RelativeLayout {
         return pdfFile.searchText(txt);
     }
 
+    public void insertImageToFile(Bitmap bitmap, String name) {
+        try {
+            File f = new File(getContext().getExternalFilesDir(null), name);
+            if (f != null &&  !f.exists())
+                f.createNewFile();
+            ParcelFileDescriptor pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_WRITE_ONLY);
+            pdfFile.insertImageToFile(bitmap, pfd.detachFd());
+        } catch (RuntimeException e) {
+            throw new RuntimeException(e);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public void recycle() {
         waitingDocumentConfigurator = null;
@@ -810,6 +829,14 @@ public class PDFView extends RelativeLayout {
             cacheManager.recycle();
             _loadPages();
         }
+    }
+
+    public Bitmap getFirstBitmap() {
+        if (cacheManager != null) {
+            Bitmap rgbaBitmap = cacheManager.getPageParts().get(0).getRenderedBitmap().copy(Bitmap.Config.ARGB_8888, false);
+            return rgbaBitmap;
+        }
+        return null;
     }
 
     /**

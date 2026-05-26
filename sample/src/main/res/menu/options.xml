@@ -30,4 +30,9 @@
         android:icon="@android:drawable/ic_menu_search"
         android:title="@string/search_text"
         app:showAsAction="always"/>
+    <item
+        android:id="@+id/insert"
+        android:icon="@android:drawable/ic_menu_add"
+        android:title="@string/insert_page"
+        app:showAsAction="always"/>
 </menu>

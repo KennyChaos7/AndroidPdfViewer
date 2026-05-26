@@ -24,6 +24,10 @@ using namespace android;
 #include <fpdf_edit.h>
 #include <string>
 #include <vector>
+#include <fpdf_save.h>
+#include <fstream>
+#include <stdio.h>
+#include <stdlib.h>
 
 static Mutex sLibraryLock;
 
@@ -64,6 +68,12 @@ typedef struct text_rec
     double left, top, right, bottom;
     std::vector<unsigned short> txt;
 } TEXT_RECTF;
+
+typedef struct
+{
+    FPDF_FILEWRITE base;
+    FILE *fp;
+} FPDFFileWriter;
 
 class DocumentFile
 {
@@ -212,6 +222,27 @@ void rgbBitmapTo565(void *source, int sourceStride, void *dest, AndroidBitmapInf
     }
 }
 
+void rgbaToBgra(const uint8_t *src, uint8_t *dst, int width, int height, int stride)
+{
+    int x, y;
+    for (y = 0; y < height; ++y)
+    {
+        const uint8_t *srcRow = src + y * stride;
+        uint8_t *dstRow = dst + y * stride;
+        for (x = 0; x < width; ++x)
+        {
+            uint8_t r = srcRow[x * 4 + 0];
+            uint8_t g = srcRow[x * 4 + 1];
+            uint8_t b = srcRow[x * 4 + 2];
+            uint8_t a = srcRow[x * 4 + 3];
+            dstRow[x * 4 + 0] = b; // B
+            dstRow[x * 4 + 1] = g; // G
+            dstRow[x * 4 + 2] = r; // R
+            dstRow[x * 4 + 3] = a; // A
+        }
+    }
+}
+
 void rgbaText(FPDF_ANNOTATION anno, FS_RECTF *rectf)
 {
     unsigned int r, g, b, a;
@@ -332,6 +363,12 @@ std::vector<unsigned short> Utf8ToUtf16LE(const std::string &utf8)
 
     result.push_back(0); // null 终止
     return result;
+}
+
+static int WriteBlockCallback(FPDF_FILEWRITE *pThis, const void *pData, unsigned long size)
+{
+    FPDFFileWriter *writer = (FPDFFileWriter *)pThis;
+    return fwrite(pData, 1, size, writer->fp) == size;
 }
 
 extern "C"
@@ -954,7 +991,7 @@ extern "C"
         return env->NewObject(clazz, constructorID, deviceX, deviceY);
     }
 
-    //TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+    // TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
     JNI_FUNC(jobject, PdfiumCore, nativePdfDocumentSearchText)(JNI_ARGS, jlong docPtr, jstring txt, jboolean isAutoHighLight)
     {
         DocumentFile *doc = reinterpret_cast<DocumentFile *>(docPtr);
@@ -1012,7 +1049,6 @@ extern "C"
         return result_list;
     }
 
-    
     JNI_FUNC(jobject, PdfiumCore, nativePageSearchText)(JNI_ARGS, jlong pagePtr, jint currentPage, jstring txt, jboolean isAutoHighLight)
     {
         FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
@@ -1059,7 +1095,7 @@ extern "C"
         return result_list;
     }
 
-    //TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+    // TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
     JNI_FUNC(void, PdfiumCore, nativeCloseSearchText)(JNI_ARGS, jlong docPtr)
     {
         DocumentFile *doc = reinterpret_cast<DocumentFile *>(docPtr);
@@ -1103,7 +1139,6 @@ extern "C"
         }
     }
 
-
     JNI_FUNC(void, PdfiumCore, nativeClosePageSearchText)(JNI_ARGS, jlong pagePtr)
     {
         FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
@@ -1132,6 +1167,89 @@ extern "C"
         }
         FPDFPage_GenerateContent(page);
         LOGI("page history annot count = %d", anno_count);
+    }
+
+    JNI_FUNC(void, PdfiumCore, nativeInsertPage)(JNI_ARGS, jlong docPtr, jobject bitmap, jint fd)
+    {
+        DocumentFile *doc = reinterpret_cast<DocumentFile *>(docPtr);
+        if (doc == nullptr)
+        {
+            LOGE("nativeInsertPage doc is null");
+            return;
+        }
+
+        AndroidBitmapInfo info;
+        int ret;
+        if ((ret = AndroidBitmap_getInfo(env, bitmap, &info)) < 0)
+        {
+            LOGE("Fetching bitmap info failed: %s", strerror(ret * -1));
+            return;
+        }
+        if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888)
+        {
+            LOGE("Bitmap format must be RGBA_8888");
+            return;
+        }
+
+        void *addr;
+        if ((ret = AndroidBitmap_lockPixels(env, bitmap, &addr)) != 0)
+        {
+            LOGE("Locking bitmap failed: %s", strerror(ret * -1));
+            return;
+        }
+        FPDFFileWriter fileWriter;
+        fileWriter.base.version = 1;
+        fileWriter.base.WriteBlock = WriteBlockCallback;
+        fileWriter.fp = fdopen(fd, "wb");
+        if (!fileWriter.fp)
+        {
+            LOGE("fileWriter error");
+            return;
+        }
+        FPDF_DOCUMENT document = doc->pdfDocument;
+        LOGI("insert new page in %d on %dx%d", FPDF_GetPageCount(document), info.width, info.height);
+        FPDF_PAGE newPage = FPDFPage_New(document, FPDF_GetPageCount(document), info.width, info.height);
+        if (newPage == nullptr)
+        {
+            LOGE("newPage is null");
+            return;
+        }
+        FPDF_PAGEOBJECT imgObject = FPDFPageObj_NewImageObj(document);
+        if (imgObject == nullptr)
+        {
+            LOGE("image is null");
+            return;
+        }
+        FS_MATRIX matrix = {
+            (float)info.width, 0,
+            0, (float)info.height,
+            0, 0};
+        FPDFPageObj_SetMatrix(imgObject, &matrix);
+        // FPDF_BITMAP pdfBitmap = FPDFBitmap_CreateEx(info.width, info.height, FPDFBitmap_BGRA, buffer, info.stride);
+        FPDF_BITMAP pdfBitmap = FPDFBitmap_Create(info.width, info.height, 1);
+        if (pdfBitmap == nullptr)
+        {
+            LOGE("pdfBitmap is null");
+            return;
+        }
+        int bufSize = info.height * info.stride;
+        void *dstBuf = FPDFBitmap_GetBuffer(pdfBitmap);
+        int dstStride = FPDFBitmap_GetStride(pdfBitmap);
+        // memcpy(dstBuf, addr, bufSize);
+        rgbaToBgra((const uint8_t*)addr, (uint8_t*)dstBuf, (int)info.width, (int)info.height, (int)info.stride);
+
+
+        FPDF_BOOL bitmapResult = FPDFImageObj_SetBitmap(&newPage, 1, imgObject, pdfBitmap);
+        FPDFPage_InsertObject(newPage, imgObject);
+        FPDF_BOOL genResult = FPDFPage_GenerateContent(newPage);
+        FPDF_ClosePage(newPage);
+        LOGI("insert new page in %d bitmapResult = %d genResult = %d", FPDF_GetPageCount(document), bitmapResult, genResult);
+        int saveResult = FPDF_SaveAsCopy(document, &fileWriter.base, FPDF_NO_INCREMENTAL);
+        fclose(fileWriter.fp);
+        LOGI("save new page to file result = %d", saveResult);
+        FPDFBitmap_Destroy(pdfBitmap);
+        // free(buffer);
+        AndroidBitmap_unlockPixels(env, bitmap);
     }
 
 } // extern C

@@ -122,9 +122,17 @@ public class PdfiumCore {
     /**
      * 清除整个文件黑亮搜索结果
      * @param docPtr
-     * TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+     * TODO 可能存在问题（进行关闭批注历史时，可能清除不了的情况）
      */
     private native void nativeCloseSearchText(long docPtr);
+
+    /**
+     * 新增图片页面
+     * @param docPtr
+     * @param bitmap
+     * @param fd
+     */
+    private native void nativeInsertPage(long docPtr, Bitmap bitmap, int fd);
 
     /**
      * 清除某一页上黑亮搜索结果
@@ -503,14 +511,14 @@ public class PdfiumCore {
     public ArrayList<PdfDocument.Text> searchText(PdfDocument doc, String txt) {
         ArrayList<PdfDocument.Text> list = new ArrayList<>();
         synchronized (txt) {
-            //TODO 使用jni层的全文搜索方法，而不是用循环的方式调用单页搜索的方法进行
-//            nativeCloseSearchText(doc.mNativeDocPtr);
-//            try {
-//                Thread.sleep(200 * doc.mNativePagesPtr.size());
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
-//            list = nativePdfDocumentSearchText(doc.mNativeDocPtr, txt, true);
+            // 使用jni层的全文搜索方法，而不是用循环的方式调用单页搜索的方法进行
+            nativeCloseSearchText(doc.mNativeDocPtr);
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            list = nativePdfDocumentSearchText(doc.mNativeDocPtr, txt, true);
 
             // 进行了延迟的设置，但本身可能并不需要延迟只需要从上到下按顺序执行即可
 //            try {
@@ -532,25 +540,36 @@ public class PdfiumCore {
 //            }
 
             // 无延迟版本
-            int index = 0;
-            while (index < doc.mNativePagesPtr.size()) {
-                nativeClosePageSearchText(doc.mNativePagesPtr.get(index));
-                index++;
-            }
-            index = 0;
-            while (index < doc.mNativePagesPtr.size()) {
-                list.addAll(nativePageSearchText(doc.mNativePagesPtr.get(index), index, txt, true));
-                index++;
-            }
+//            int index = 0;
+//            while (index < doc.mNativePagesPtr.size()) {
+//                Log.e(TAG, index + " - " + doc.mNativePagesPtr.get(index));
+//                if (doc.mNativePagesPtr.get(index) != null)
+//                    nativeClosePageSearchText(doc.mNativePagesPtr.get(index));
+//                index++;
+//            }
+//            index = 0;
+//            while (index < doc.mNativePagesPtr.size()) {
+//                if (doc.mNativePagesPtr.get(index) != null)
+//                    list.addAll(nativePageSearchText(doc.mNativePagesPtr.get(index), index, txt, true));
+//                index++;
+//            }
+//
+//            for (PdfDocument.Text text : list) {
+//                Log.e(TAG, text.toString());
+//            }
 
-            for (PdfDocument.Text text : list) {
-                Log.e(TAG, text.toString());
-            }
+
             return list;
         }
     }
 
     public void setHighLightColor(int red, int green, int blue, int alpha) {
         nativeSetHighLightColor(red, green, blue, alpha);
+    }
+
+    public void insertImageToFile(PdfDocument doc, Bitmap bitmap, int fd) {
+        if (doc != null && bitmap != null && fd != 0) {
+            nativeInsertPage(doc.mNativeDocPtr, bitmap, fd);
+        }
     }
 }

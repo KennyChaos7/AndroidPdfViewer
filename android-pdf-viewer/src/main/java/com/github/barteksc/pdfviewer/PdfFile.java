@@ -410,4 +410,10 @@ class PdfFile {
             return new ArrayList<>();
         return pdfiumCore.searchText(pdfDocument, txt);
     }
+
+    public void insertImageToFile(Bitmap bitmap, int fd) {
+        if (pdfDocument == null)
+            return;
+        pdfiumCore.insertImageToFile(pdfDocument, bitmap, fd);
+    }
 }

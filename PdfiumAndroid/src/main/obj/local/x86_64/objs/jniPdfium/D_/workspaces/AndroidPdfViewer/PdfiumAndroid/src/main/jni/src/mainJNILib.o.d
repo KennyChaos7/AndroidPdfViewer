@@ -79,7 +79,13 @@ D:/workspaces/AndroidPdfViewer/PdfiumAndroid/src/main/obj/local/x86_64/objs/jniP
   D:\workspaces\AndroidPdfViewer\PdfiumAndroid\src\main\jni\include\fpdf_formfill.h \
   D:\workspaces\AndroidPdfViewer\PdfiumAndroid\src\main\jni\include\fpdf_edit.h \
   D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\vector \
-  D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\__split_buffer
+  D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\__split_buffer \
+  D:\workspaces\AndroidPdfViewer\PdfiumAndroid\src\main\jni\include\fpdf_save.h \
+  D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\fstream \
+  D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\filesystem \
+  D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\stack \
+  D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\deque \
+  D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\iomanip
 
 D:\workspaces\AndroidPdfViewer\PdfiumAndroid\src\main\jni\src\util.hpp:
 
@@ -240,3 +246,15 @@ D:\workspaces\AndroidPdfViewer\PdfiumAndroid\src\main\jni\include\fpdf_edit.h:
 D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\vector:
 
 D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\__split_buffer:
+
+D:\workspaces\AndroidPdfViewer\PdfiumAndroid\src\main\jni\include\fpdf_save.h:
+
+D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\fstream:
+
+D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\filesystem:
+
+D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\stack:
+
+D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\deque:
+
+D:\Android\SDK\ndk\21.0.6113669\build\\..\sources\cxx-stl\llvm-libc++\include\iomanip:
