@@ -499,7 +499,8 @@ public class PdfiumCore {
         ArrayList<PdfDocument.Text> list = new ArrayList<>();
         synchronized (txt) {
             long nativePagePtr = doc.mNativePagesPtr.get(pageIndex);
-            nativeClosePageSearchText(nativePagePtr);
+//            nativeClosePageSearchText(nativePagePtr);
+            nativeCloseSearchText(doc.mNativeDocPtr);
             list = nativePageSearchText(nativePagePtr, pageIndex, txt, true);
             for (PdfDocument.Text text : list) {
                 Log.e(TAG, text.toString());
@@ -513,11 +514,6 @@ public class PdfiumCore {
         synchronized (txt) {
             // 使用jni层的全文搜索方法，而不是用循环的方式调用单页搜索的方法进行
             nativeCloseSearchText(doc.mNativeDocPtr);
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
             list = nativePdfDocumentSearchText(doc.mNativeDocPtr, txt, true);
 
             // 进行了延迟的设置，但本身可能并不需要延迟只需要从上到下按顺序执行即可
