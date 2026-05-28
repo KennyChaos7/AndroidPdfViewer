@@ -271,7 +271,7 @@ bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> t
     {
         int index_char = FPDFText_GetSchResultIndex(target_ptr);
         int size_char = FPDFText_GetSchCount(target_ptr);
-        LOGD("match !, when char count = %i , and result in character index(%i)", size_char, index_char);
+        // LOGD("match !, when char count = %i , and result in character index(%i)", size_char, index_char);
         int result_count_rects = FPDFText_CountRects(text_page, index_char, size_char);
         // LOGD("FPDFText_CountRects %i", result_count_rects);
         if (result_count_rects == 0)
@@ -296,7 +296,7 @@ bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> t
             }
         }
     }
-    LOGD("findTextOnPage finish in page %d! and size = %lu", pageIndex, data.size());
+    // LOGD("findTextOnPage finish in page %d! and size = %lu", pageIndex, data.size());
     FPDFText_FindClose(target_ptr);
     FPDFText_ClosePage(text_page);
     return true;
@@ -1036,6 +1036,12 @@ extern "C"
                                 rgbaText(anno, rectf);
                                 free(rectf);
                             }
+                            jclass text_info_class = env->FindClass("com/shockwave/pdfium/PdfDocument$Text");
+                            jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;)V");
+                            jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, page_index, txt);
+                            env->CallBooleanMethod(result_list, list_add_method_id, text_info_obj);
+                            env->DeleteLocalRef(rectF_obj);
+                            env->DeleteLocalRef(text_info_obj);
                         }
                     }
                     LOGD("find %s finish in page %d! size = %lu", txt_chars, page_index, text_rectf_list.size());
@@ -1070,7 +1076,7 @@ extern "C"
                 for (int i = 0; i < text_rectf_list.size(); i++)
                 {
                     TEXT_RECTF text_rectf = text_rectf_list[i];
-                    LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
+                    // LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
                     jclass rectF_class = env->FindClass("android/graphics/RectF");
                     jmethodID rectF_constructor = env->GetMethodID(rectF_class, "set", "(FFFF)V");
                     jobject rectF_obj = env->NewObject(rectF_class, rectF_constructor, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
@@ -1085,6 +1091,12 @@ extern "C"
                         rgbaText(anno, rectf);
                         free(rectf);
                     }
+                    jclass text_info_class = env->FindClass("com/shockwave/pdfium/PdfDocument$Text");
+                    jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;)V");
+                    jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, current_page, txt);
+                    env->CallBooleanMethod(result_list, list_add_method_id, text_info_obj);
+                    env->DeleteLocalRef(rectF_obj);
+                    env->DeleteLocalRef(text_info_obj);
                 }
                 FPDFPage_CloseAnnot(anno);
             }
@@ -1236,8 +1248,7 @@ extern "C"
         void *dstBuf = FPDFBitmap_GetBuffer(pdfBitmap);
         int dstStride = FPDFBitmap_GetStride(pdfBitmap);
         // memcpy(dstBuf, addr, bufSize);
-        rgbaToBgra((const uint8_t*)addr, (uint8_t*)dstBuf, (int)info.width, (int)info.height, (int)info.stride);
-
+        rgbaToBgra((const uint8_t *)addr, (uint8_t *)dstBuf, (int)info.width, (int)info.height, (int)info.stride);
 
         FPDF_BOOL bitmapResult = FPDFImageObj_SetBitmap(&newPage, 1, imgObject, pdfBitmap);
         FPDFPage_InsertObject(newPage, imgObject);
