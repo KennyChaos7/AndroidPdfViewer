@@ -33,8 +33,12 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.HandlerThread;
 import android.os.ParcelFileDescriptor;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.View;
 import android.widget.RelativeLayout;
 
 import com.github.barteksc.pdfviewer.exception.PageRenderingException;
@@ -59,7 +63,6 @@ import com.github.barteksc.pdfviewer.source.FileSource;
 import com.github.barteksc.pdfviewer.source.InputStreamSource;
 import com.github.barteksc.pdfviewer.source.UriSource;
 import com.github.barteksc.pdfviewer.util.Constants;
-import com.github.barteksc.pdfviewer.util.FileUtils;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
 import com.github.barteksc.pdfviewer.util.MathUtils;
 import com.github.barteksc.pdfviewer.util.SnapEdge;
@@ -76,7 +79,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -261,6 +263,13 @@ public class PDFView extends RelativeLayout {
     /** Holds last used Configurator that should be loaded when view has size */
     private Configurator waitingDocumentConfigurator;
 
+    private RecyclerView recyclerView;
+    // 是否展示搜索结果列表
+    private boolean isShowSearchResultList = false;
+    // 展示搜索结果列表的位置
+    private int showSearchResultListGravity = Gravity.LEFT;
+    private PdfSearchResultAdapter searchResultAdapter = null;
+
     /** Construct the initial view */
     public PDFView(Context context, AttributeSet set) {
         super(context, set);
@@ -431,6 +440,22 @@ public class PDFView extends RelativeLayout {
         return singlePageMode;
     }
 
+    public boolean isShowSearchResultList() {
+        return isShowSearchResultList;
+    }
+
+    public void setShowSearchResultList(boolean showSearchResultList) {
+        isShowSearchResultList = showSearchResultList;
+    }
+
+    public int getShowSearchResultListGravity() {
+        return showSearchResultListGravity;
+    }
+
+    public void setShowSearchResultListGravity(int showSearchResultListGravity) {
+        this.showSearchResultListGravity = showSearchResultListGravity;
+    }
+
     void enableDoubletap(boolean enableDoubletap) {
         this.doubletapEnabled = enableDoubletap;
     }
@@ -446,11 +471,15 @@ public class PDFView extends RelativeLayout {
     }
 
     public ArrayList<PdfDocument.Text> searchText(String txt, int currentPage) {
-        return pdfFile.searchText(txt, currentPage);
+        ArrayList<PdfDocument.Text> data = pdfFile.searchText(txt, currentPage);
+        updateSearchResultList(data);
+        return data;
     }
 
     public ArrayList<PdfDocument.Text> searchText(String txt) {
-        return pdfFile.searchText(txt);
+        ArrayList<PdfDocument.Text> data = pdfFile.searchText(txt);
+        updateSearchResultList(data);
+        return data;
     }
 
     public void insertImageToFile(Bitmap bitmap, String name) {
@@ -872,6 +901,10 @@ public class PDFView extends RelativeLayout {
         if (scrollHandle != null) {
             scrollHandle.setupLayout(this);
             isScrollHandleInit = true;
+        }
+
+        if (isShowSearchResultList && recyclerView != null) {
+            loadSearchResultListView();
         }
 
         dragPinchManager.enable();
@@ -1411,6 +1444,47 @@ public class PDFView extends RelativeLayout {
         this.pageLoadingDialog = pageLoadingDialog;
     }
 
+    private void loadSearchResultListView() {
+        if (recyclerView != null && isShowSearchResultList) {
+            Log.i("searchResultListView", "width = " + (getWidth() / 4) + " height = " + (getHeight()));
+            RelativeLayout.LayoutParams parentLp = new RelativeLayout.LayoutParams(getWidth() / 4, getHeight());
+            parentLp.addRule(RelativeLayout.CENTER_HORIZONTAL);
+            if (showSearchResultListGravity == Gravity.LEFT) {
+                parentLp.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+            }
+            else if (showSearchResultListGravity == Gravity.RIGHT) {
+                parentLp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+            }
+            this.addView(recyclerView, parentLp);
+        }
+    }
+
+    public void setupSearchResultListView() {
+        if (recyclerView == null) {
+            recyclerView = new RecyclerView(getContext(), null);
+            recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+            searchResultAdapter = new PdfSearchResultAdapter();
+            searchResultAdapter.setOnItemClickListener(new PdfSearchResultAdapter.OnItemClickListener() {
+                @Override
+                public void onClick(int position, Integer pageIndex, View itemView) {
+                    jumpTo(pageIndex);
+                }
+            });
+            recyclerView.setAdapter(searchResultAdapter);
+            recyclerView.setVisibility(View.GONE);
+        }
+    }
+
+    public void updateSearchResultList(ArrayList<PdfDocument.Text> list) {
+        if (searchResultAdapter != null && list != null) {
+            searchResultAdapter.addData(list);
+            recyclerView.setVisibility(View.VISIBLE);
+        }
+        else {
+            recyclerView.setVisibility(View.GONE);
+        }
+    }
+
     /** Returns null if document is not loaded */
     public PdfDocument.Meta getDocumentMeta() {
         if (pdfFile == null) {
@@ -1530,6 +1604,10 @@ public class PDFView extends RelativeLayout {
         private boolean isThumbnailSplit = false;
 
         private boolean singlePageMode = false;
+
+        private boolean isShowSearchResultList = false;
+
+        private int searchResultListGravity = Gravity.LEFT;
 
         private Configurator(DocumentSource documentSource) {
             this.documentSource = documentSource;
@@ -1691,6 +1769,12 @@ public class PDFView extends RelativeLayout {
             return this;
         }
 
+        public Configurator showSearchResultList(boolean isShow, int gravity) {
+            this.isShowSearchResultList = isShow;
+            this.searchResultListGravity = gravity;
+            return this;
+        }
+
         public void load() {
             if (!hasSize) {
                 waitingDocumentConfigurator = this;
@@ -1725,6 +1809,8 @@ public class PDFView extends RelativeLayout {
             PDFView.this.setShowLoadingDialog(showLoadingDialog);
             PDFView.this.setThumbnailSplit(isThumbnailSplit);
             PDFView.this.setSinglePageMode(singlePageMode);
+            PDFView.this.setShowSearchResultList(isShowSearchResultList);
+            PDFView.this.setShowSearchResultListGravity(searchResultListGravity);
 
             if (pageNumbers != null) {
                 PDFView.this.load(documentSource, password, pageNumbers);
@@ -1734,6 +1820,9 @@ public class PDFView extends RelativeLayout {
             if (showLoadingDialog) {
                 PDFView.this.setPageLoadingDialog(new PageLoadingDialog(getContext()));
                 PDFView.this.getPageLoadingDialog().show();
+            }
+            if (isShowSearchResultList) {
+                PDFView.this.setupSearchResultListView();
             }
         }
     }

@@ -991,7 +991,7 @@ extern "C"
         return env->NewObject(clazz, constructorID, deviceX, deviceY);
     }
 
-    // TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+    
     JNI_FUNC(jobject, PdfiumCore, nativePdfDocumentSearchText)(JNI_ARGS, jlong docPtr, jstring txt, jboolean isAutoHighLight)
     {
         DocumentFile *doc = reinterpret_cast<DocumentFile *>(docPtr);
@@ -1107,7 +1107,7 @@ extern "C"
         return result_list;
     }
 
-    // TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
+
     JNI_FUNC(void, PdfiumCore, nativeCloseSearchText)(JNI_ARGS, jlong docPtr)
     {
         DocumentFile *doc = reinterpret_cast<DocumentFile *>(docPtr);

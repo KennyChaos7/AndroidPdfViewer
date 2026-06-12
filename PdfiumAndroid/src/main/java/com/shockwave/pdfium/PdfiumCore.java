@@ -107,7 +107,6 @@ public class PdfiumCore {
      * @param word              要搜索的文字
      * @param isAutoHighLight   是否自动进行高亮处理
      * @return
-     * TODO 存在问题（进行关闭批注历史时，可能清除不了的情况）
      */
     private native ArrayList<PdfDocument.Text> nativePdfDocumentSearchText(long docPtr, String word, boolean isAutoHighLight);
     /**
@@ -122,7 +121,6 @@ public class PdfiumCore {
     /**
      * 清除整个文件黑亮搜索结果
      * @param docPtr
-     * TODO 可能存在问题（进行关闭批注历史时，可能清除不了的情况）
      */
     private native void nativeCloseSearchText(long docPtr);
 

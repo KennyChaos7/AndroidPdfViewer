@@ -23,6 +23,8 @@ import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Environment;
+import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -30,6 +32,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -40,6 +43,7 @@ import com.github.barteksc.pdfviewer.listener.OnLoadCompleteListener;
 import com.github.barteksc.pdfviewer.listener.OnPageChangeListener;
 import com.github.barteksc.pdfviewer.listener.OnPageErrorListener;
 import com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle;
+import com.github.barteksc.pdfviewer.util.FileUtils;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
 import com.shockwave.pdfium.PdfDocument;
 
@@ -51,6 +55,7 @@ import org.androidannotations.annotations.OptionsItem;
 import org.androidannotations.annotations.OptionsMenu;
 import org.androidannotations.annotations.ViewById;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,7 +69,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     private final static int REQUEST_CODE = 42;
     public static final int PERMISSION_CODE = 42042;
 
-    public static final String SAMPLE_FILE = "sample5.pdf";
+    public static final String SAMPLE_FILE = "sample6.pdf";
     public static final String READ_EXTERNAL_STORAGE = "android.permission.READ_EXTERNAL_STORAGE";
 
     // 页码跳转弹窗
@@ -136,6 +141,14 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
         showSearchTextDialog();
     }
 
+    @OptionsItem(R.id.insert)
+    void insert() {
+        // 测试-添加第一页到最后一页上
+        pdfView.insertImageToFile(
+                pdfView.getFirstBitmap(), "tmp-" + System.currentTimeMillis()+ ".pdf"
+        );
+    }
+
 
     void launchPicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -168,14 +181,14 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .onPageChange(this)
                 .enableAnnotationRendering(true)
                 .onLoad(this)
-//                .swipeHorizontal(true)
-//                .scrollHandle(new DefaultScrollHandle(this))
+//            
                 .spacing(10) // in dp
                 .onPageError(this)
                 .pageFitPolicy(FitPolicy.BOTH)
                 .showLoadingDialog(false) //显示首页加载的Loading
                 .isThumbnailSplit(false)// 缩略图分块
                 .singlePageMode(false)// 单页模式
+                .showSearchResultList(true, Gravity.RIGHT)// 是否显示搜索结果列表
                 .load();
     }
 
@@ -236,13 +249,10 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                     ArrayList<PdfDocument.Text> list;
                     // 是否进行全页搜索
                     if (!checkBox.isChecked()) {
-                        list = pdfView.searchText(editText.getText().toString(), pdfView.getCurrentPage());
+                        pdfView.searchText(editText.getText().toString(), pdfView.getCurrentPage());
                     }
                     else {
-                        list = pdfView.searchText(editText.getText().toString());
-                    }
-                    if (list != null && list.size() > 0) {
-                       Log.e(TAG, list.toString());
+                        pdfView.searchText(editText.getText().toString());
                     }
                     pdfView.reloadPage();
                 }
