@@ -1,5 +1,6 @@
 package com.github.barteksc.pdfviewer;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
@@ -27,10 +28,11 @@ public class PdfSearchResultAdapter extends RecyclerView.Adapter<PdfSearchResult
         return new ViewHolder(setupLayout(viewGroup.getContext()));
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder viewHolder, final int i) {
         if (dataList.size() > 0) {
-            viewHolder.tvPageIndex.setText(String.valueOf("On page "+ dataList.get(i).first + 1 + ": had (" + dataList.get(i).second) + ") result.");
+            viewHolder.tvPageIndex.setText("On page " + (dataList.get(i).first + 1) + ": had (" + dataList.get(i).second + ") result.");
             viewHolder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
