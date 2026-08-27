@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pdf_search_result_on_one_page_head">On page %1$d : had ( %2$d ) result.</string>
+    <string name="pdf_search_result_on_one_page_content"> %1$d on ( %2$f, %3$f ) </string>
+</resources>

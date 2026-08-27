@@ -188,7 +188,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .showLoadingDialog(false) //显示首页加载的Loading
                 .isThumbnailSplit(false)// 缩略图分块
                 .singlePageMode(false)// 单页模式
-                .showSearchResultList(true, Gravity.RIGHT)// 是否显示搜索结果列表
+                .showSearchResultList(true, Gravity.RIGHT, true, false)// 是否显示搜索结果列表
                 .load();
     }
 

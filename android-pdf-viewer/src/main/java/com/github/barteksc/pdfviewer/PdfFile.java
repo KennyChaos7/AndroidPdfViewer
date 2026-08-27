@@ -18,6 +18,7 @@ package com.github.barteksc.pdfviewer;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.util.Log;
 import android.util.SparseBooleanArray;
 
 import com.github.barteksc.pdfviewer.exception.PageRenderingException;
@@ -347,6 +348,11 @@ class PdfFile {
                                  RectF rect) {
         int docPage = documentPage(pageIndex);
         return pdfiumCore.mapRectToDevice(pdfDocument, docPage, startX, startY, sizeX, sizeY, 0, rect);
+    }
+
+    public RectF mapRectToDeviceWithOpen(int pageIndex, int startX, int startY, int sizeX, int sizeY, RectF rect) {
+        int docPage = documentPage(pageIndex);
+        return pdfiumCore.mapRectToDeviceWithOpen(pdfDocument, docPage, startX, startY, sizeX, sizeY, 0, rect);
     }
 
     public void dispose() {

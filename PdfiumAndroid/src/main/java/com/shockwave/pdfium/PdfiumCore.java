@@ -493,6 +493,18 @@ public class PdfiumCore {
         return new RectF(leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
     }
 
+    public RectF mapRectToDeviceWithOpen(PdfDocument doc, int pageIndex, int startX, int startY, int sizeX,
+                                 int sizeY, int rotate, RectF coords) {
+        if (doc.mNativePagesPtr.get(pageIndex) == null) {
+            openPage(doc, pageIndex);
+        }
+        Point leftTop = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
+                coords.left, coords.top);
+        Point rightBottom = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
+                coords.right, coords.bottom);
+        return new RectF(leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
+    }
+
     public ArrayList<PdfDocument.Text> searchText(PdfDocument doc, String txt, int pageIndex) {
         ArrayList<PdfDocument.Text> list = new ArrayList<>();
         synchronized (txt) {

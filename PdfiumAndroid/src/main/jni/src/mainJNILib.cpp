@@ -65,6 +65,7 @@ struct rgb
 typedef struct text_rec
 {
     int pageIndex;
+    int row;
     double left, top, right, bottom;
     std::vector<unsigned short> txt;
 } TEXT_RECTF;
@@ -262,6 +263,30 @@ void rgbaText(FPDF_ANNOTATION anno, FS_RECTF *rectf)
     // free(quadpoints);
 }
 
+int getRowInPage(FPDF_PAGE page, float target_left, float target_right, float target_top, float target_bottom)
+{
+    std::vector<float> txt_row_start_x;
+    FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
+    int count = FPDFText_CountRects(text_page, 0, -1);
+    if (count > 0) 
+    {
+        double left, right, top, bottom;
+        for (int index = 0; index < count; index ++) 
+        {
+            if (FPDFText_GetRect(text_page, index, &left, &top, &right, &bottom)) 
+            {
+                if (top == target_top || bottom == target_bottom)
+                {
+                    FPDFText_ClosePage(text_page);
+                    return index;
+                }
+            }
+        }
+    }
+    FPDFText_ClosePage(text_page);
+    return -1;
+}
+
 bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> txt, std::vector<TEXT_RECTF> &data)
 {
     data.clear();
@@ -291,7 +316,10 @@ bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> t
             while (rect_index < result_count_rects && FPDFText_GetRect(text_page, rect_index, &left, &top, &right, &bottom))
             {
                 // LOGD("match !, char rectf=(%f, %f, %f, %f)", left, right, top, bottom);
-                data.push_back({pageIndex, left, top, right, bottom, txt});
+                // int row = FPDFText_GetBoundedText(text_page, left, top, right, bottom, txt.data(), size_char);
+                int row = getRowInPage(page, left, right, top, bottom);
+                LOGD("match !, char rectf=(%f, %f, %f, %f) in %d", left, right, top, bottom, row);
+                data.push_back({pageIndex, row, left, top, right, bottom, txt});
                 rect_index++;
             }
         }
@@ -1044,7 +1072,7 @@ extern "C"
                             env->DeleteLocalRef(text_info_obj);
                         }
                     }
-                    LOGD("find %s finish in page %d! size = %lu", txt_chars, page_index, text_rectf_list.size());
+                    // LOGD("find %s finish in page %d! size = %lu", txt_chars, page_index, text_rectf_list.size());
                     page_index++;
                 }
                 FPDFPage_CloseAnnot(anno);
@@ -1100,7 +1128,7 @@ extern "C"
                 }
                 FPDFPage_CloseAnnot(anno);
             }
-            LOGD("find %s finish in page %d size = %lu", txt_chars, current_page, text_rectf_list.size());
+            // LOGD("find %s finish in page %d size = %lu", txt_chars, current_page, text_rectf_list.size());
             FPDFPage_GenerateContent(page);
         }
         env->ReleaseStringUTFChars(txt, txt_chars);
