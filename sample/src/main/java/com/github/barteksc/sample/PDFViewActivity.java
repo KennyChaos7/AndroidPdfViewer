@@ -232,7 +232,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     }
 
     /**
-     * 页码跳转弹窗设置
+     * 搜索输入弹窗设置
      */
     private void showSearchTextDialog() {
         if (searchTextDialog == null) {

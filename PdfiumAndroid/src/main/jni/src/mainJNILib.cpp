@@ -1051,7 +1051,7 @@ extern "C"
                             TEXT_RECTF text_rectf = text_rectf_list[i];
                             // LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
                             jclass rectF_class = env->FindClass("android/graphics/RectF");
-                            jmethodID rectF_constructor = env->GetMethodID(rectF_class, "set", "(FFFF)V");
+                            jmethodID rectF_constructor = env->GetMethodID(rectF_class, "<init>", "(FFFF)V");
                             jobject rectF_obj = env->NewObject(rectF_class, rectF_constructor, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
                             if (is_auto_high_light)
                             {
@@ -1106,7 +1106,7 @@ extern "C"
                     TEXT_RECTF text_rectf = text_rectf_list[i];
                     // LOGD("find %s ,match !, char rectf=(%f, %f, %f, %f)", txt_chars, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
                     jclass rectF_class = env->FindClass("android/graphics/RectF");
-                    jmethodID rectF_constructor = env->GetMethodID(rectF_class, "set", "(FFFF)V");
+                    jmethodID rectF_constructor = env->GetMethodID(rectF_class, "<init>", "(FFFF)V");
                     jobject rectF_obj = env->NewObject(rectF_class, rectF_constructor, text_rectf.left, text_rectf.top, text_rectf.right, text_rectf.bottom);
                     if (is_auto_high_light)
                     {

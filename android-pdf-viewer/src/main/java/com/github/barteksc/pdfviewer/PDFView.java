@@ -478,13 +478,17 @@ public class PDFView extends RelativeLayout {
 
     public ArrayList<PdfDocument.Text> searchText(String txt, int currentPage) {
         ArrayList<PdfDocument.Text> data = pdfFile.searchText(txt, currentPage);
-        updateSearchResultList(data);
+        if (isShowSearchResultList) {
+            updateSearchResultList(data);
+        }
         return data;
     }
 
     public ArrayList<PdfDocument.Text> searchText(String txt) {
         ArrayList<PdfDocument.Text> data = pdfFile.searchText(txt);
-        updateSearchResultList(data);
+        if (isShowSearchResultList) {
+            updateSearchResultList(data);
+        }
         return data;
     }
 
