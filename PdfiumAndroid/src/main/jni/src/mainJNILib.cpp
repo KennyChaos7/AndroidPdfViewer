@@ -244,6 +244,9 @@ void rgbaToBgra(const uint8_t *src, uint8_t *dst, int width, int height, int str
     }
 }
 
+static const char kSearchHighlightKey[] = "AndroidPdfViewerSearchHighlight";
+static const unsigned short kSearchHighlightValue[] = {'1', 0};
+
 void rgbaText(FPDF_ANNOTATION anno, FS_RECTF *rectf)
 {
     unsigned int r, g, b, a;
@@ -261,6 +264,24 @@ void rgbaText(FPDF_ANNOTATION anno, FS_RECTF *rectf)
     quadpoints.y4 = rectf->bottom;
     FPDFAnnot_AppendAttachmentPoints(anno, &quadpoints);
     // free(quadpoints);
+}
+
+void clearSearchHighlights(FPDF_PAGE page)
+{
+    // Removing an annotation shifts later indices, so remove from the end.
+    for (int i = FPDFPage_GetAnnotCount(page) - 1; i >= 0; --i)
+    {
+        FPDF_ANNOTATION anno = FPDFPage_GetAnnot(page, i);
+        if (anno)
+        {
+            bool is_search_highlight = FPDFAnnot_HasKey(anno, kSearchHighlightKey);
+            FPDFPage_CloseAnnot(anno);
+            if (is_search_highlight)
+            {
+                FPDFPage_RemoveAnnot(page, i);
+            }
+        }
+    }
 }
 
 int getRowInPage(FPDF_PAGE page, float target_left, float target_right, float target_top, float target_bottom)
@@ -1040,6 +1061,7 @@ extern "C"
             {
                 FPDF_PAGE page = FPDF_LoadPage(pdfDoc, page_index);
                 FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
+                FPDFAnnot_SetStringValue(anno, kSearchHighlightKey, kSearchHighlightValue);
                 if (page)
                 {
                     std::vector<TEXT_RECTF> text_rectf_list;
@@ -1077,6 +1099,7 @@ extern "C"
                 }
                 FPDFPage_CloseAnnot(anno);
                 FPDFPage_GenerateContent(page);
+                FPDF_ClosePage(page);
             }
         }
         env->ReleaseStringUTFChars(txt, txt_chars);
@@ -1101,6 +1124,7 @@ extern "C"
             if (findTextOnPage(page, currentPage, text_utf16, text_rectf_list))
             {
                 FPDF_ANNOTATION anno = FPDFPage_CreateAnnot(page, FPDF_ANNOT_HIGHLIGHT);
+                FPDFAnnot_SetStringValue(anno, kSearchHighlightKey, kSearchHighlightValue);
                 for (int i = 0; i < text_rectf_list.size(); i++)
                 {
                     TEXT_RECTF text_rectf = text_rectf_list[i];
@@ -1155,26 +1179,10 @@ extern "C"
                 LOGE("doc find page history error");
                 return;
             }
-            int anno_count = FPDFPage_GetAnnotCount(page);
-            if (anno_count > 0)
-            {
-                int i = 0;
-                while (i < anno_count)
-                {
-                    FPDF_ANNOTATION anno = FPDFPage_GetAnnot(page, i);
-                    if (anno)
-                    {
-                        int anno_index = FPDFPage_GetAnnotIndex(page, anno);
-                        if (anno_index != -1)
-                        {
-                            FPDFPage_RemoveAnnot(page, anno_index);
-                        }
-                    }
-                    i++;
-                }
-            }
+            clearSearchHighlights(page);
             FPDFPage_GenerateContent(page);
-            LOGI("doc history page %d annot count = %d", page_index, anno_count);
+            LOGI("doc history page %d annot count = %d", page_index, FPDFPage_GetAnnotCount(page));
+            FPDF_ClosePage(page);
             page_index++;
         }
     }
@@ -1187,26 +1195,9 @@ extern "C"
             LOGE("page history error");
             return;
         }
-        int anno_count = FPDFPage_GetAnnotCount(page);
-        if (anno_count > 0)
-        {
-            int i = 0;
-            while (i < anno_count)
-            {
-                FPDF_ANNOTATION anno = FPDFPage_GetAnnot(page, i);
-                if (anno)
-                {
-                    int anno_index = FPDFPage_GetAnnotIndex(page, anno);
-                    if (anno_index != -1)
-                    {
-                        FPDFPage_RemoveAnnot(page, anno_index);
-                    }
-                }
-                i++;
-            }
-        }
+        clearSearchHighlights(page);
         FPDFPage_GenerateContent(page);
-        LOGI("page history annot count = %d", anno_count);
+        LOGI("page history annot count = %d", FPDFPage_GetAnnotCount(page));
     }
 
     JNI_FUNC(void, PdfiumCore, nativeInsertPage)(JNI_ARGS, jlong docPtr, jobject bitmap, jint fd)

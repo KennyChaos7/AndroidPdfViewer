@@ -6,7 +6,7 @@ endobj
 << /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R /Annots [6 0 R 7 0 R] >>
 endobj
 4 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
@@ -14,19 +14,31 @@ endobj
 5 0 obj
 << /Length 38 >>
 stream
-BT /F1 12 Tf 50 150 Td (needle) Tj ET
+BT
+/F1 12 Tf
+50 150 Td
+(needle) Tj
+ET
 endstream
 endobj
+6 0 obj
+<< /Type /Annot /Subtype /Link /Rect [25 25 100 45] /Border [0 0 0] /A << /S /URI /URI (https://example.com) >> >>
+endobj
+7 0 obj
+<< /Type /Annot /Subtype /Highlight /Rect [25 55 100 75] /QuadPoints [25 75 100 75 25 55 100 55] /C [1 0 0] /CA 0.4 >>
+endobj
 xref
-0 6
+0 8
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
-0000000241 00000 n 
-0000000311 00000 n 
+0000000263 00000 n 
+0000000333 00000 n 
+0000000420 00000 n 
+0000000550 00000 n 
 trailer
-<< /Size 6 /Root 1 0 R >>
+<< /Size 8 /Root 1 0 R >>
 startxref
-398
+684
 %%EOF
