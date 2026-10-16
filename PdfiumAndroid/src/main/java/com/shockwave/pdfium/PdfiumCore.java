@@ -208,6 +208,10 @@ public class PdfiumCore {
     public long openPage(PdfDocument doc, int pageIndex) {
         long pagePtr;
         synchronized (lock) {
+            Long opened = doc.mNativePagesPtr.get(pageIndex);
+            if (opened != null) {
+                return opened;
+            }
             pagePtr = nativeLoadPage(doc.mNativeDocPtr, pageIndex);
             doc.mNativePagesPtr.put(pageIndex, pagePtr);
             return pagePtr;
@@ -217,17 +221,22 @@ public class PdfiumCore {
 
     /** Open range of pages and store native pointers in {@link PdfDocument} */
     public long[] openPage(PdfDocument doc, int fromIndex, int toIndex) {
-        long[] pagesPtr;
         synchronized (lock) {
-            pagesPtr = nativeLoadPages(doc.mNativeDocPtr, fromIndex, toIndex);
-            int pageIndex = fromIndex;
-            for (long page : pagesPtr) {
-                if (pageIndex > toIndex) break;
-                doc.mNativePagesPtr.put(pageIndex, page);
-                pageIndex++;
+            long[] pagesPtr = new long[toIndex - fromIndex + 1];
+            for (int index = fromIndex; index <= toIndex; index++) {
+                pagesPtr[index - fromIndex] = openPage(doc, index);
             }
-
             return pagesPtr;
+        }
+    }
+
+    /** 释放指定的已打开页面，需要时可重新打开。 */
+    public void closePage(PdfDocument doc, int pageIndex) {
+        synchronized (lock) {
+            Long pagePtr = doc.mNativePagesPtr.remove(pageIndex);
+            if (pagePtr != null) {
+                nativeClosePage(pagePtr);
+            }
         }
     }
 
@@ -475,8 +484,10 @@ public class PdfiumCore {
      */
     public Point mapPageCoordsToDevice(PdfDocument doc, int pageIndex, int startX, int startY, int sizeX,
                                        int sizeY, int rotate, double pageX, double pageY) {
-        long pagePtr = doc.mNativePagesPtr.get(pageIndex);
-        return nativePageCoordsToDevice(pagePtr, startX, startY, sizeX, sizeY, rotate, pageX, pageY);
+        synchronized (lock) {
+            long pagePtr = doc.mNativePagesPtr.get(pageIndex);
+            return nativePageCoordsToDevice(pagePtr, startX, startY, sizeX, sizeY, rotate, pageX, pageY);
+        }
     }
 
     /**
@@ -486,28 +497,26 @@ public class PdfiumCore {
     public RectF mapRectToDevice(PdfDocument doc, int pageIndex, int startX, int startY, int sizeX,
                                  int sizeY, int rotate, RectF coords) {
 
-        Point leftTop = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
-                coords.left, coords.top);
-        Point rightBottom = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
-                coords.right, coords.bottom);
-        return new RectF(leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
+        synchronized (lock) {
+            Point leftTop = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
+                    coords.left, coords.top);
+            Point rightBottom = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
+                    coords.right, coords.bottom);
+            return new RectF(leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
+        }
     }
 
     public RectF mapRectToDeviceWithOpen(PdfDocument doc, int pageIndex, int startX, int startY, int sizeX,
                                  int sizeY, int rotate, RectF coords) {
-        if (doc.mNativePagesPtr.get(pageIndex) == null) {
+        synchronized (lock) {
             openPage(doc, pageIndex);
+            return mapRectToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate, coords);
         }
-        Point leftTop = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
-                coords.left, coords.top);
-        Point rightBottom = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
-                coords.right, coords.bottom);
-        return new RectF(leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
     }
 
     public ArrayList<PdfDocument.Text> searchText(PdfDocument doc, String txt, int pageIndex) {
         ArrayList<PdfDocument.Text> list = new ArrayList<>();
-        synchronized (txt) {
+        synchronized (lock) {
             long nativePagePtr = doc.mNativePagesPtr.get(pageIndex);
 //            nativeClosePageSearchText(nativePagePtr);
             nativeCloseSearchText(doc.mNativeDocPtr);
@@ -521,7 +530,7 @@ public class PdfiumCore {
 
     public ArrayList<PdfDocument.Text> searchText(PdfDocument doc, String txt) {
         ArrayList<PdfDocument.Text> list = new ArrayList<>();
-        synchronized (txt) {
+        synchronized (lock) {
             // 使用jni层的全文搜索方法，而不是用循环的方式调用单页搜索的方法进行
             nativeCloseSearchText(doc.mNativeDocPtr);
             list = nativePdfDocumentSearchText(doc.mNativeDocPtr, txt, true);
@@ -570,12 +579,16 @@ public class PdfiumCore {
     }
 
     public void setHighLightColor(int red, int green, int blue, int alpha) {
-        nativeSetHighLightColor(red, green, blue, alpha);
+        synchronized (lock) {
+            nativeSetHighLightColor(red, green, blue, alpha);
+        }
     }
 
     public void insertImageToFile(PdfDocument doc, Bitmap bitmap, int fd) {
-        if (doc != null && bitmap != null && fd != 0) {
-            nativeInsertPage(doc.mNativeDocPtr, bitmap, fd);
+        synchronized (lock) {
+            if (doc != null && bitmap != null && fd != 0) {
+                nativeInsertPage(doc.mNativeDocPtr, bitmap, fd);
+            }
         }
     }
 }

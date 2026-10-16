@@ -722,6 +722,7 @@ extern "C"
                               startX, startY,
                               drawSizeHor, drawSizeVer,
                               0, flags);
+        FPDFBitmap_Destroy(pdfBitmap);
     }
 
     JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong pagePtr, jobject objSurface,
@@ -859,6 +860,7 @@ extern "C"
         FPDFBitmap_FillRect(pdfBitmap, baseX, baseY, baseHorSize, baseVerSize, 0xFFFFFFFF);
 
         FPDF_RenderPageBitmap(pdfBitmap, page, startX, startY, (int)drawSizeHor, (int)drawSizeVer, 0, flags);
+        FPDFBitmap_Destroy(pdfBitmap);
 
         if (info.format == ANDROID_BITMAP_FORMAT_RGB_565)
         {
