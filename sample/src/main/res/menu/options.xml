@@ -31,6 +31,11 @@
         android:title="@string/search_text"
         app:showAsAction="always"/>
     <item
+        android:id="@+id/edit"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:title="@string/edit"
+        app:showAsAction="always"/>
+    <item
         android:id="@+id/insert"
         android:icon="@android:drawable/ic_menu_add"
         android:title="@string/insert_page"

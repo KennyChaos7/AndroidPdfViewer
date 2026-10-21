@@ -1,4 +1,4 @@
-#include "util.hpp"
+﻿#include "util.hpp"
 #include <iostream>
 #include <chrono>
 extern "C"
@@ -22,8 +22,10 @@ using namespace android;
 #include <fpdf_text.h>
 #include <fpdf_annot.h>
 #include <fpdf_edit.h>
+#include <fpdf_structtree.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <fpdf_save.h>
 #include <fstream>
 #include <stdio.h>
@@ -244,113 +246,6 @@ void rgbaToBgra(const uint8_t *src, uint8_t *dst, int width, int height, int str
     }
 }
 
-static const char kSearchHighlightKey[] = "AndroidPdfViewerSearchHighlight";
-static const unsigned short kSearchHighlightValue[] = {'1', 0};
-
-void rgbaText(FPDF_ANNOTATION anno, FS_RECTF *rectf)
-{
-    unsigned int r, g, b, a;
-    FPDFAnnot_SetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, 255, 255, 0, 120);
-    // FPDFAnnot_GetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, &r, &g, &b, &a);
-    // LOGI("is supports %d, get= %d, InteriorColor = %u-%u-%u-%u",  FPDFAnnot_IsSupportedSubtype(FPDF_ANNOT_HIGHLIGHT), FPDFAnnot_GetSubtype(anno), r, g, b, a);
-    FS_QUADPOINTSF quadpoints; //= (FS_QUADPOINTSF*)malloc(sizeof(FS_QUADPOINTSF));
-    quadpoints.x1 = rectf->left;
-    quadpoints.y1 = rectf->top;
-    quadpoints.x3 = rectf->right;
-    quadpoints.y3 = rectf->top;
-    quadpoints.x2 = rectf->left;
-    quadpoints.y2 = rectf->bottom;
-    quadpoints.x4 = rectf->right;
-    quadpoints.y4 = rectf->bottom;
-    FPDFAnnot_AppendAttachmentPoints(anno, &quadpoints);
-    // free(quadpoints);
-}
-
-void clearSearchHighlights(FPDF_PAGE page)
-{
-    // Removing an annotation shifts later indices, so remove from the end.
-    for (int i = FPDFPage_GetAnnotCount(page) - 1; i >= 0; --i)
-    {
-        FPDF_ANNOTATION anno = FPDFPage_GetAnnot(page, i);
-        if (anno)
-        {
-            bool is_search_highlight = FPDFAnnot_HasKey(anno, kSearchHighlightKey);
-            FPDFPage_CloseAnnot(anno);
-            if (is_search_highlight)
-            {
-                FPDFPage_RemoveAnnot(page, i);
-            }
-        }
-    }
-}
-
-int getRowInPage(FPDF_PAGE page, float target_left, float target_right, float target_top, float target_bottom)
-{
-    std::vector<float> txt_row_start_x;
-    FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
-    int count = FPDFText_CountRects(text_page, 0, -1);
-    if (count > 0) 
-    {
-        double left, right, top, bottom;
-        for (int index = 0; index < count; index ++) 
-        {
-            if (FPDFText_GetRect(text_page, index, &left, &top, &right, &bottom)) 
-            {
-                if (top == target_top || bottom == target_bottom)
-                {
-                    FPDFText_ClosePage(text_page);
-                    return index;
-                }
-            }
-        }
-    }
-    FPDFText_ClosePage(text_page);
-    return -1;
-}
-
-bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> txt, std::vector<TEXT_RECTF> &data)
-{
-    data.clear();
-    FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
-    FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, txt.data(), 0, 0);
-    while (FPDFText_FindNext(target_ptr))
-    {
-        int index_char = FPDFText_GetSchResultIndex(target_ptr);
-        int size_char = FPDFText_GetSchCount(target_ptr);
-        // LOGD("match !, when char count = %i , and result in character index(%i)", size_char, index_char);
-        int result_count_rects = FPDFText_CountRects(text_page, index_char, size_char);
-        // LOGD("FPDFText_CountRects %i", result_count_rects);
-        if (result_count_rects == 0)
-        {
-            LOGE("text_page is null");
-            return false;
-        }
-        else if (result_count_rects == -1)
-        {
-            LOGE("index_char is error");
-            return false;
-        }
-        else
-        {
-            double left, right, top, bottom;
-            int rect_index = 0;
-            while (rect_index < result_count_rects && FPDFText_GetRect(text_page, rect_index, &left, &top, &right, &bottom))
-            {
-                // LOGD("match !, char rectf=(%f, %f, %f, %f)", left, right, top, bottom);
-                // int row = FPDFText_GetBoundedText(text_page, left, top, right, bottom, txt.data(), size_char);
-                int row = getRowInPage(page, left, right, top, bottom);
-                LOGD("match !, char rectf=(%f, %f, %f, %f) in %d", left, right, top, bottom, row);
-                data.push_back({pageIndex, row, left, top, right, bottom, txt});
-                rect_index++;
-            }
-        }
-    }
-    // LOGD("findTextOnPage finish in page %d! and size = %lu", pageIndex, data.size());
-    FPDFText_FindClose(target_ptr);
-    FPDFText_ClosePage(text_page);
-    return true;
-}
-
 // 将 UTF-8 字符串转换为 UTF-16LE（unsigned short 数组，末尾带 '\0'）
 std::vector<unsigned short> Utf8ToUtf16LE(const std::string &utf8)
 {
@@ -412,6 +307,390 @@ std::vector<unsigned short> Utf8ToUtf16LE(const std::string &utf8)
 
     result.push_back(0); // null 终止
     return result;
+}
+
+// 将 Unicode code point 列表转换为 UTF-16 单元列表，末尾带 '\0'
+std::vector<unsigned short> UnsignedIntListToUnsignedShortList(const std::vector<unsigned int> &codepoints)
+{
+    std::vector<unsigned short> result;
+    result.reserve(codepoints.size() + 1);
+
+    for (unsigned int codepoint : codepoints)
+    {
+        if (codepoint > 0x10FFFF)
+            continue;
+
+        if (codepoint >= 0x10000)
+        {
+            codepoint -= 0x10000;
+            result.push_back(static_cast<unsigned short>(0xD800 + (codepoint >> 10)));
+            result.push_back(static_cast<unsigned short>(0xDC00 + (codepoint & 0x3FF)));
+        }
+        else
+        {
+            result.push_back(static_cast<unsigned short>(codepoint));
+        }
+    }
+
+    result.push_back(0);
+    return result;
+}
+
+// utf16le 转 jstring
+jstring Utf16leToJString(JNIEnv *env, const std::vector<unsigned int> &cps)
+{
+    std::vector<jchar> utf16;
+    utf16.reserve(cps.size());
+
+    for (unsigned int cp : cps)
+    {
+        if (cp >= 0x10000 && cp <= 0x10FFFF)
+        {
+            cp -= 0x10000;
+            utf16.push_back((jchar)(0xD800 + (cp >> 10)));   // 高代理
+            utf16.push_back((jchar)(0xDC00 + (cp & 0x3FF))); // 低代理
+        }
+        else if (cp <= 0xFFFF)
+        {
+            utf16.push_back((jchar)cp); // BMP 直接存
+        }
+        // 非法码点跳过
+    }
+
+    return env->NewString(utf16.data(), (jsize)utf16.size());
+}
+
+static const char kSearchHighlightKey[] = "AndroidPdfViewerSearchHighlight";
+static const unsigned short kSearchHighlightValue[] = {'1', 0};
+
+void rgbaText(FPDF_ANNOTATION anno, FS_RECTF *rectf)
+{
+    unsigned int r, g, b, a;
+    FPDFAnnot_SetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, 255, 255, 0, 120);
+    // FPDFAnnot_GetColor(anno, FPDFANNOT_COLORTYPE_InteriorColor, &r, &g, &b, &a);
+    // LOGI("is supports %d, get= %d, InteriorColor = %u-%u-%u-%u",  FPDFAnnot_IsSupportedSubtype(FPDF_ANNOT_HIGHLIGHT), FPDFAnnot_GetSubtype(anno), r, g, b, a);
+    FS_QUADPOINTSF quadpoints; //= (FS_QUADPOINTSF*)malloc(sizeof(FS_QUADPOINTSF));
+    quadpoints.x1 = rectf->left;
+    quadpoints.y1 = rectf->top;
+    quadpoints.x3 = rectf->right;
+    quadpoints.y3 = rectf->top;
+    quadpoints.x2 = rectf->left;
+    quadpoints.y2 = rectf->bottom;
+    quadpoints.x4 = rectf->right;
+    quadpoints.y4 = rectf->bottom;
+    FPDFAnnot_AppendAttachmentPoints(anno, &quadpoints);
+    // free(quadpoints);
+}
+
+void clearSearchHighlights(FPDF_PAGE page)
+{
+    // Removing an annotation shifts later indices, so remove from the end.
+    for (int i = FPDFPage_GetAnnotCount(page) - 1; i >= 0; --i)
+    {
+        FPDF_ANNOTATION anno = FPDFPage_GetAnnot(page, i);
+        if (anno)
+        {
+            bool is_search_highlight = FPDFAnnot_HasKey(anno, kSearchHighlightKey);
+            FPDFPage_CloseAnnot(anno);
+            if (is_search_highlight)
+            {
+                FPDFPage_RemoveAnnot(page, i);
+            }
+        }
+    }
+}
+
+int getRowInPage(FPDF_PAGE page, float target_left, float target_right, float target_top, float target_bottom)
+{
+    std::vector<float> txt_row_start_x;
+    FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
+    int count = FPDFText_CountRects(text_page, 0, -1);
+    if (count > 0)
+    {
+        double left, right, top, bottom;
+        for (int index = 0; index < count; index++)
+        {
+            if (FPDFText_GetRect(text_page, index, &left, &top, &right, &bottom))
+            {
+                if (top == target_top || bottom == target_bottom)
+                {
+                    FPDFText_ClosePage(text_page);
+                    return index;
+                }
+            }
+        }
+    }
+    FPDFText_ClosePage(text_page);
+    return -1;
+}
+
+bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> txt, std::vector<TEXT_RECTF> &data)
+{
+    data.clear();
+    FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
+    FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, txt.data(), 0, 0);
+    while (FPDFText_FindNext(target_ptr))
+    {
+        int index_char = FPDFText_GetSchResultIndex(target_ptr);
+        int size_char = FPDFText_GetSchCount(target_ptr);
+        // LOGD("match !, when char count = %i , and result in character index(%i)", size_char, index_char);
+        int result_count_rects = FPDFText_CountRects(text_page, index_char, size_char);
+        // LOGD("FPDFText_CountRects %i", result_count_rects);
+        if (result_count_rects == 0)
+        {
+            LOGE("text_page is null");
+            return false;
+        }
+        else if (result_count_rects == -1)
+        {
+            LOGE("index_char is error");
+            return false;
+        }
+        else
+        {
+            double left, right, top, bottom;
+            int rect_index = 0;
+            while (rect_index < result_count_rects && FPDFText_GetRect(text_page, rect_index, &left, &top, &right, &bottom))
+            {
+                // LOGD("match !, char rectf=(%f, %f, %f, %f)", left, right, top, bottom);
+                // int row = FPDFText_GetBoundedText(text_page, left, top, right, bottom, txt.data(), size_char);
+                int row = getRowInPage(page, left, right, top, bottom);
+                LOGD("match !, char rectf=(%f, %f, %f, %f) in %d", left, right, top, bottom, row);
+                data.push_back({pageIndex, row, left, top, right, bottom, txt});
+                rect_index++;
+            }
+        }
+    }
+    // LOGD("findTextOnPage finish in page %d! and size = %lu", pageIndex, data.size());
+    FPDFText_FindClose(target_ptr);
+    FPDFText_ClosePage(text_page);
+    return true;
+}
+
+std::map<int, std::vector<unsigned int>> creaetMCIDMapInPage(jlong pagePtr)
+{
+    std::map<int, std::vector<unsigned int>> mcid_map;
+    FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
+    FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
+    if (text_page == nullptr)
+    {
+        LOGE("creaetMCIDMapInPage: FPDFText_LoadPage failed");
+        return mcid_map;
+    }
+    int char_count = FPDFText_CountChars(text_page);
+    for (int i = 0; i < char_count; ++i)
+    {
+        FPDF_PAGEOBJECT char_page_obj = FPDFText_GetTextObject(text_page, i);
+        if (char_page_obj != NULL)
+        {
+            int mcid = FPDFPageObj_GetMarkedContentID(char_page_obj);
+            if (mcid >= 0) // MCID 0 合法，-1 才是错误
+            {
+                mcid_map[mcid].push_back(FPDFText_GetUnicode(text_page, i));
+            }
+        }
+    }
+    FPDFText_ClosePage(text_page);
+    return mcid_map;
+}
+
+bool getRectfFromCharBox(
+    FPDF_PAGE page,
+    FS_RECTF &rectf,
+    const unsigned short *buffer_content)
+{
+    rectf.left = 0;
+    rectf.right = 0;
+    rectf.bottom = 0;
+    rectf.top = 0;
+
+    if (page == nullptr || buffer_content == nullptr)
+        return false;
+
+    FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
+    if (text_page == nullptr)
+        return false;
+
+    FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(
+        text_page,
+        const_cast<FPDF_WIDESTRING>(buffer_content),
+        0,
+        0);
+
+    if (target_ptr == nullptr)
+    {
+        FPDFText_ClosePage(text_page);
+        return false;
+    }
+
+    bool has_rect = false;
+
+    if (FPDFText_FindNext(target_ptr))
+    {
+        int start_position = FPDFText_GetSchResultIndex(target_ptr);
+        int match_count = FPDFText_GetSchCount(target_ptr);
+
+        for (int i = 0; i < match_count; ++i)
+        {
+            FS_RECTF char_rect;
+
+            if (!FPDFText_GetLooseCharBox(
+                    text_page,
+                    start_position + i,
+                    &char_rect))
+            {
+                continue;
+            }
+
+            if (!has_rect)
+            {
+                rectf = char_rect;
+                has_rect = true;
+            }
+            else
+            {
+                if (char_rect.left < rectf.left)
+                    rectf.left = char_rect.left;
+
+                if (char_rect.right > rectf.right)
+                    rectf.right = char_rect.right;
+
+                if (char_rect.bottom < rectf.bottom)
+                    rectf.bottom = char_rect.bottom;
+
+                if (char_rect.top > rectf.top)
+                    rectf.top = char_rect.top;
+            }
+        }
+    }
+
+    FPDFText_FindClose(target_ptr);
+    FPDFText_ClosePage(text_page);
+
+    return has_rect;
+}
+
+// 返回根节点及其后代；id/parentId 仅在本次 result_list 内有效。
+void checkFpdfStructElementChild(JNIEnv *env, FPDF_PAGE page, jobject result_list, FPDF_STRUCTELEMENT root, jint pageIndex,
+                                 const std::map<int, std::vector<unsigned int>> &mcid_map)
+{
+    jclass list_class = env->GetObjectClass(result_list);
+    jmethodID list_add = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
+    jmethodID list_size = env->GetMethodID(list_class, "size", "()I");
+    jclass element_class = env->FindClass("com/shockwave/pdfium/PdfDocument$StructElement");
+    jmethodID element_constructor = env->GetMethodID(
+        element_class, "<init>",
+        "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Landroid/graphics/RectF;)V");
+    jclass rect_class = env->FindClass("android/graphics/RectF");
+    jmethodID rect_constructor = env->GetMethodID(rect_class, "<init>", "(FFFF)V");
+
+    using StringGetter = unsigned long(FPDF_CALLCONV *)(FPDF_STRUCTELEMENT, void *, unsigned long);
+    auto readString = [&](FPDF_STRUCTELEMENT element, StringGetter getter) -> jstring
+    {
+        unsigned long bytes = getter(element, nullptr, 0);
+        if (bytes < sizeof(jchar))
+            return nullptr;
+        std::vector<jchar> buffer(bytes / sizeof(jchar));
+        getter(element, buffer.data(), bytes);
+        return env->NewString(buffer.data(), static_cast<jsize>(buffer.size() - 1));
+    };
+
+    auto createBounds = [&](jstring text) -> jobject
+    {
+        if (text == nullptr)
+            return nullptr;
+        jsize length = env->GetStringLength(text);
+        if (length == 0)
+            return nullptr;
+        std::vector<jchar> buffer(length + 1, 0);
+        env->GetStringRegion(text, 0, length, buffer.data());
+        FS_RECTF rect = {};
+        if (!getRectfFromCharBox(page, rect, reinterpret_cast<const unsigned short *>(buffer.data())))
+            return nullptr;
+        return env->NewObject(rect_class, rect_constructor, rect.left, rect.top, rect.right, rect.bottom);
+    };
+
+    auto appendElement = [&](jstring type, jstring text, jint parentIndex) -> jint
+    {
+        // 所有根节点共用一个列表，编号不会在遍历下一个根时重新开始。
+        jint nodeIndex = env->CallIntMethod(result_list, list_size);
+        jstring id = env->NewStringUTF(std::to_string(nodeIndex).c_str());
+        jstring parentId = parentIndex >= 0
+                               ? env->NewStringUTF(std::to_string(parentIndex).c_str())
+                               : nullptr;
+        jobject bounds = createBounds(text);
+        jobject element = env->NewObject(
+            element_class, element_constructor, type, id, parentId, pageIndex, text, bounds);
+        env->CallBooleanMethod(result_list, list_add, element);
+        env->DeleteLocalRef(element);
+        env->DeleteLocalRef(id);
+        if (parentId != nullptr)
+            env->DeleteLocalRef(parentId);
+        if (bounds != nullptr)
+            env->DeleteLocalRef(bounds);
+        return nodeIndex;
+    };
+
+    auto appendStructure = [&](FPDF_STRUCTELEMENT element, jint parentIndex) -> jint
+    {
+        jstring type = readString(element, FPDF_StructElement_GetType);
+        // 结构节点只保留 ActualText；MCID 文字由独立的 T 节点返回。
+        jstring text = readString(element, FPDF_StructElement_GetActualText);
+        jint nodeIndex = appendElement(type, text, parentIndex);
+        if (type != nullptr)
+            env->DeleteLocalRef(type);
+        if (text != nullptr)
+            env->DeleteLocalRef(text);
+        return nodeIndex;
+    };
+
+    struct TraverseFrame
+    {
+        FPDF_STRUCTELEMENT element;
+        jint nodeIndex;
+        int nextChild;
+    };
+
+    jstring text_type = env->NewStringUTF("T");
+    std::vector<TraverseFrame> frames;
+    jint rootIndex = appendStructure(root, -1);
+    frames.push_back({root, rootIndex, 0});
+
+    while (!frames.empty())
+    {
+        TraverseFrame &frame = frames.back();
+        int childCount = FPDF_StructElement_CountChildren(frame.element);
+        if (frame.nextChild >= childCount)
+        {
+            frames.pop_back();
+            continue;
+        }
+
+        int childIndex = frame.nextChild++;
+        jint parentIndex = frame.nodeIndex;
+        FPDF_STRUCTELEMENT child = FPDF_StructElement_GetChildAtIndex(frame.element, childIndex);
+        if (child != nullptr)
+        {
+            jint nodeIndex = appendStructure(child, parentIndex);
+            frames.push_back({child, nodeIndex, 0});
+        }
+        else
+        {
+            // 直属内容按 /K 中的位置输出，避免将 Span 前后的文字提前合并。
+            int mcid = FPDF_StructElement_GetChildMarkedContentID(frame.element, childIndex);
+            auto it = mcid_map.find(mcid);
+            if (it == mcid_map.end())
+                continue;
+            jstring text = Utf16leToJString(env, it->second);
+            appendElement(text_type, text, parentIndex);
+            env->DeleteLocalRef(text);
+        }
+    }
+
+    env->DeleteLocalRef(text_type);
+    env->DeleteLocalRef(rect_class);
+    env->DeleteLocalRef(element_class);
+    env->DeleteLocalRef(list_class);
 }
 
 static int WriteBlockCallback(FPDF_FILEWRITE *pThis, const void *pData, unsigned long size)
@@ -1042,7 +1321,6 @@ extern "C"
         return env->NewObject(clazz, constructorID, deviceX, deviceY);
     }
 
-    
     JNI_FUNC(jobject, PdfiumCore, nativePdfDocumentSearchText)(JNI_ARGS, jlong docPtr, jstring txt, jboolean isAutoHighLight)
     {
         DocumentFile *doc = reinterpret_cast<DocumentFile *>(docPtr);
@@ -1160,7 +1438,6 @@ extern "C"
         env->ReleaseStringUTFChars(txt, txt_chars);
         return result_list;
     }
-
 
     JNI_FUNC(void, PdfiumCore, nativeCloseSearchText)(JNI_ARGS, jlong docPtr)
     {
@@ -1282,6 +1559,30 @@ extern "C"
         FPDFBitmap_Destroy(pdfBitmap);
         // free(buffer);
         AndroidBitmap_unlockPixels(env, bitmap);
+    }
+
+    JNI_FUNC(jobject, PdfiumCore, nativeGetPageStructElement)(JNI_ARGS, jlong pagePtr, jint pageIndex)
+    {
+        jobject result_list = NewEmptyArrayList(env);
+        FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
+        if (page == nullptr)
+            return result_list;
+
+        FPDF_STRUCTTREE page_structtree = FPDF_StructTree_GetForPage(page);
+        if (page_structtree == nullptr)
+            return result_list;
+
+        std::map<int, std::vector<unsigned int>> mcid_map = creaetMCIDMapInPage(pagePtr);
+        int root_count = FPDF_StructTree_CountChildren(page_structtree);
+        for (int i = 0; i < root_count; ++i)
+        {
+            FPDF_STRUCTELEMENT root = FPDF_StructTree_GetChildAtIndex(page_structtree, i);
+            if (root != nullptr)
+                checkFpdfStructElementChild(env, page, result_list, root, pageIndex, mcid_map);
+        }
+
+        FPDF_StructTree_Close(page_structtree);
+        return result_list;
     }
 
 } // extern C

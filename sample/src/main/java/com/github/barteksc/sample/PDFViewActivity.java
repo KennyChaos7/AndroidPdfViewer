@@ -59,6 +59,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.github.barteksc.pdfviewer.util.Util;
+
 @EActivity(R.layout.activity_main)
 @OptionsMenu(R.menu.options)
 public class PDFViewActivity extends AppCompatActivity implements OnPageChangeListener, OnLoadCompleteListener,
@@ -97,9 +99,8 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                     this,
-                    new String[]{READ_EXTERNAL_STORAGE},
-                    PERMISSION_CODE
-            );
+                    new String[] { READ_EXTERNAL_STORAGE },
+                    PERMISSION_CODE);
 
             return;
         }
@@ -145,10 +146,20 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     void insert() {
         // 测试-添加第一页到最后一页上
         pdfView.insertImageToFile(
-                pdfView.getFirstBitmap(), "tmp-" + System.currentTimeMillis()+ ".pdf"
-        );
+                pdfView.getFirstBitmap(), "tmp-" + System.currentTimeMillis() + ".pdf");
     }
 
+    @OptionsItem(R.id.edit)
+    void edit() {
+        ArrayList<PdfDocument.StructElement> structElementArrayList = pdfView
+                .getPageStructElement(pdfView.getCurrentPage());
+        for (PdfDocument.StructElement structElement : structElementArrayList) {
+            Log.i("StructElement", structElement.toString());
+        }
+        for (PdfDocument.StructContent structContent : Util.toStructContentList(pdfView.getCurrentPage(), structElementArrayList)) {
+            Log.i("StructContent", structContent.toString());
+        }
+    }
 
     void launchPicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -156,7 +167,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
         try {
             startActivityForResult(intent, REQUEST_CODE);
         } catch (ActivityNotFoundException e) {
-            //alert user that file manager not working
+            // alert user that file manager not working
             Toast.makeText(this, R.string.toast_pick_file_error, Toast.LENGTH_SHORT).show();
         }
     }
@@ -181,11 +192,10 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 .onPageChange(this)
                 .enableAnnotationRendering(true)
                 .onLoad(this)
-//            
                 .spacing(10) // in dp
                 .onPageError(this)
                 .pageFitPolicy(FitPolicy.BOTH)
-                .showLoadingDialog(false) //显示首页加载的Loading
+                .showLoadingDialog(false) // 显示首页加载的Loading
                 .isThumbnailSplit(false)// 缩略图分块
                 .singlePageMode(false)// 单页模式
                 .showSearchResultList(true, Gravity.RIGHT, true, false)// 是否显示搜索结果列表
@@ -221,7 +231,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                 EditText editPages = jumpToDialog.findViewById(R.id.edit_pages);
                 if (editPages != null && editPages.getText().length() > 0) {
                     int page = Integer.parseInt(editPages.getText().toString());
-//                    Log.e("pdfView", "jump to " + page);
+                    // Log.e("pdfView", "jump to " + page);
                     if (page >= 1 && page <= pdfView.getPageCount()) {
                         pdfView.jumpTo(page - 1);
                         jumpToDialog.dismiss();
@@ -232,7 +242,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     }
 
     /**
-     * 搜索输入弹窗设置
+     * 页码跳转弹窗设置
      */
     private void showSearchTextDialog() {
         if (searchTextDialog == null) {
@@ -250,8 +260,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                     // 是否进行全页搜索
                     if (!checkBox.isChecked()) {
                         pdfView.searchText(editText.getText().toString(), pdfView.getCurrentPage());
-                    }
-                    else {
+                    } else {
                         pdfView.searchText(editText.getText().toString());
                     }
                     pdfView.reloadPage();
@@ -331,7 +340,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
      */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],
-                                           @NonNull int[] grantResults) {
+            @NonNull int[] grantResults) {
         if (requestCode == PERMISSION_CODE) {
             if (grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED) {

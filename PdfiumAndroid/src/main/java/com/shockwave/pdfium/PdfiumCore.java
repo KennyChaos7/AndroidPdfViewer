@@ -125,6 +125,12 @@ public class PdfiumCore {
     private native void nativeCloseSearchText(long docPtr);
 
     /**
+     * 获取某一页的全部元素结构，以及对应的文字和坐标
+     * @param docPtr
+     * @param pageIndex
+     */
+    private native ArrayList<PdfDocument.StructElement> nativeGetPageStructElement(long docPtr, int pageIndex);
+    /**
      * 新增图片页面
      * @param docPtr
      * @param bitmap
@@ -589,6 +595,19 @@ public class PdfiumCore {
             if (doc != null && bitmap != null && fd != 0) {
                 nativeInsertPage(doc.mNativeDocPtr, bitmap, fd);
             }
+        }
+    }
+
+    public ArrayList<PdfDocument.StructElement> getPageStructElement(PdfDocument doc, int pageIndex) {
+        synchronized (lock) {
+            ArrayList<PdfDocument.StructElement> structElementArrayList = new ArrayList<>();
+            if (doc != null && doc.hasPage(pageIndex)) {
+                ArrayList<PdfDocument.StructElement> resultList = nativeGetPageStructElement(doc.mNativePagesPtr.get(pageIndex), pageIndex);
+                if (resultList != null) {
+                    structElementArrayList.addAll(resultList);
+                }
+            }
+            return structElementArrayList;
         }
     }
 }

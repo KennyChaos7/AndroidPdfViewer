@@ -450,4 +450,11 @@ class PdfFile {
             if (pdfDocument != null) pdfiumCore.insertImageToFile(pdfDocument, bitmap, fd);
         }
     }
+
+    public ArrayList<PdfDocument.StructElement> getPageStructElement(int pageIndex) {
+        synchronized (lock) {
+            return preparePage(pageIndex) ? pdfiumCore.getPageStructElement(pdfDocument, documentPage(pageIndex))
+                    : new ArrayList<PdfDocument.StructElement>();
+        }
+    }
 }

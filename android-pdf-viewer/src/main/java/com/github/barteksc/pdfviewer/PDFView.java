@@ -508,6 +508,10 @@ public class PDFView extends RelativeLayout {
         }
     }
 
+    public ArrayList<PdfDocument.StructElement> getPageStructElement(int pageIndex) {
+        return pdfFile.getPageStructElement(pageIndex);
+    }
+
     public void recycle() {
         waitingDocumentConfigurator = null;
 
