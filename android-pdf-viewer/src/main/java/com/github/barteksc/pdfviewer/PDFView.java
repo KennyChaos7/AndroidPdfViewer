@@ -534,6 +534,12 @@ public class PDFView extends RelativeLayout {
             scrollHandle.destroyLayout();
         }
 
+        if (recyclerView != null) {
+            removeView(recyclerView);
+            recyclerView = null;
+            searchResultAdapter = null;
+        }
+
         if (pdfFile != null) {
             Log.i("", " ------------ ");
             pdfFile.dispose();
