@@ -104,11 +104,17 @@ public class PdfDocument {
         private RectF bounds;
         private int destPageIdx;
         private String value;
+        private String contextText;
 
         public Text(RectF bounds, int destPageIdx, String value) {
+            this(bounds, destPageIdx, value, value);
+        }
+
+        public Text(RectF bounds, int destPageIdx, String value, String contextText) {
             this.bounds = bounds;
             this.destPageIdx = destPageIdx;
             this.value = value;
+            this.contextText = contextText;
         }
 
         public RectF getBounds() {
@@ -123,12 +129,17 @@ public class PdfDocument {
             return value;
         }
 
+        public String getContextText() {
+            return contextText;
+        }
+
         @Override
         public String toString() {
             return "Text{" +
                     "bounds=" + bounds +
                     ", destPageIdx=" + destPageIdx +
                     ", value='" + value + '\'' +
+                    ", contextText='" + contextText + '\'' +
                     '}';
         }
     }

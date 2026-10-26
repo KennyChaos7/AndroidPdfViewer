@@ -49,7 +49,7 @@ public class DefaultSearchResultAdapter extends BaseSearchAdapter<DefaultSearchV
             finalDefaultSearchViewHolder.getTvPage().setText(String.format(formatHeadText, text.getDestPageIdx() + 1, numInPage.get(text.getDestPageIdx())));
         }
         else if (itemType == TYPE_DETAILS) {
-            finalDefaultSearchViewHolder.getTvPage().setText(String.format(formatContentText, text.getDestPageIdx() + 1, text.getBounds().left, text.getBounds().top));
+            finalDefaultSearchViewHolder.getTvPage().setText(String.format(formatContentText, text.getDestPageIdx() + 1, text.getBounds().left, text.getBounds().top, text.getContextText()));
         }
         finalDefaultSearchViewHolder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override

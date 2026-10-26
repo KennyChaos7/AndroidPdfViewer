@@ -25,6 +25,7 @@ using namespace android;
 #include <fpdf_structtree.h>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <map>
 #include <fpdf_save.h>
 #include <fstream>
@@ -429,6 +430,8 @@ bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> t
     data.clear();
     FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
     FPDF_SCHHANDLE target_ptr = FPDFText_FindStart(text_page, txt.data(), 0, 0);
+    const int page_char_count = FPDFText_CountChars(text_page);
+    const int context_char_count = 5;
     while (FPDFText_FindNext(target_ptr))
     {
         int index_char = FPDFText_GetSchResultIndex(target_ptr);
@@ -448,6 +451,12 @@ bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> t
         }
         else
         {
+            int context_start = std::max(0, index_char - context_char_count);
+            int context_end = std::min(page_char_count, index_char + size_char + context_char_count);
+            int context_count = context_end - context_start;
+            std::vector<unsigned short> context_text(context_count + 1);
+            int text_length = FPDFText_GetText(text_page, context_start, context_count, context_text.data());
+            context_text.resize(std::max(0, text_length - 1));
             double left, right, top, bottom;
             int rect_index = 0;
             while (rect_index < result_count_rects && FPDFText_GetRect(text_page, rect_index, &left, &top, &right, &bottom))
@@ -456,7 +465,7 @@ bool findTextOnPage(FPDF_PAGE page, int pageIndex, std::vector<unsigned short> t
                 // int row = FPDFText_GetBoundedText(text_page, left, top, right, bottom, txt.data(), size_char);
                 int row = getRowInPage(page, left, right, top, bottom);
                 LOGD("match !, char rectf=(%f, %f, %f, %f) in %d", left, right, top, bottom, row);
-                data.push_back({pageIndex, row, left, top, right, bottom, txt});
+                data.push_back({pageIndex, row, left, top, right, bottom, context_text});
                 rect_index++;
             }
         }
@@ -1367,9 +1376,11 @@ extern "C"
                                 free(rectf);
                             }
                             jclass text_info_class = env->FindClass("com/shockwave/pdfium/PdfDocument$Text");
-                            jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;)V");
-                            jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, page_index, txt);
+                            jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;Ljava/lang/String;)V");
+                            jstring context_text = env->NewString(reinterpret_cast<const jchar *>(text_rectf.txt.data()), text_rectf.txt.size());
+                            jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, page_index, txt, context_text);
                             env->CallBooleanMethod(result_list, list_add_method_id, text_info_obj);
+                            env->DeleteLocalRef(context_text);
                             env->DeleteLocalRef(rectF_obj);
                             env->DeleteLocalRef(text_info_obj);
                         }
@@ -1424,9 +1435,11 @@ extern "C"
                         free(rectf);
                     }
                     jclass text_info_class = env->FindClass("com/shockwave/pdfium/PdfDocument$Text");
-                    jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;)V");
-                    jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, current_page, txt);
+                    jmethodID text_constructor = env->GetMethodID(text_info_class, "<init>", "(Landroid/graphics/RectF;ILjava/lang/String;Ljava/lang/String;)V");
+                    jstring context_text = env->NewString(reinterpret_cast<const jchar *>(text_rectf.txt.data()), text_rectf.txt.size());
+                    jobject text_info_obj = env->NewObject(text_info_class, text_constructor, rectF_obj, current_page, txt, context_text);
                     env->CallBooleanMethod(result_list, list_add_method_id, text_info_obj);
+                    env->DeleteLocalRef(context_text);
                     env->DeleteLocalRef(rectF_obj);
                     env->DeleteLocalRef(text_info_obj);
                 }
