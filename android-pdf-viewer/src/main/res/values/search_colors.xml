@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pdf_search_surface">#F5F6F8</color>
+    <color name="pdf_search_card">#FFFFFF</color>
+    <color name="pdf_search_selected">#EFF6FF</color>
+    <color name="pdf_search_border">#E2E8F0</color>
+    <color name="pdf_search_selected_border">#BFDBFE</color>
+    <color name="pdf_search_accent">#2563EB</color>
+    <color name="pdf_search_text">#172033</color>
+    <color name="pdf_search_secondary">#64748B</color>
+    <color name="pdf_search_muted">#94A3B8</color>
+    <color name="pdf_search_badge">#E9EDF2</color>
+    <color name="pdf_search_highlight">#FDE68A</color>
+</resources>

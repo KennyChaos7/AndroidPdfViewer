@@ -57,6 +57,7 @@ import com.github.barteksc.pdfviewer.listener.OnTapListener;
 import com.github.barteksc.pdfviewer.model.PagePart;
 import com.github.barteksc.pdfviewer.scroll.ScrollHandle;
 import com.github.barteksc.pdfviewer.search.DefaultSearchResultAdapter;
+import com.github.barteksc.pdfviewer.search.SearchResultPanel;
 import com.github.barteksc.pdfviewer.source.AssetSource;
 import com.github.barteksc.pdfviewer.source.ByteArraySource;
 import com.github.barteksc.pdfviewer.source.DocumentSource;
@@ -264,13 +265,11 @@ public class PDFView extends RelativeLayout {
     /** Holds last used Configurator that should be loaded when view has size */
     private Configurator waitingDocumentConfigurator;
 
-    private RecyclerView recyclerView;
+    private SearchResultPanel searchResultPanel;
     // 是否展示搜索结果列表
     private boolean isShowSearchResultList = false;
     // 展示搜索结果列表的位置
     private int showSearchResultListGravity = Gravity.LEFT;
-    // 展示搜索结果时候是否跳转到对应的具体位置
-    private boolean isAllowToJumpToSpecificLocation = false;
     // 展示搜索结果按照页面来展示，或者显示详细每个搜索结果
     private boolean isJustShowPage = false;
     // 展示结果时按照页面进行整理
@@ -534,9 +533,9 @@ public class PDFView extends RelativeLayout {
             scrollHandle.destroyLayout();
         }
 
-        if (recyclerView != null) {
-            removeView(recyclerView);
-            recyclerView = null;
+        if (searchResultPanel != null) {
+            removeView(searchResultPanel);
+            searchResultPanel = null;
             searchResultAdapter = null;
         }
 
@@ -589,6 +588,9 @@ public class PDFView extends RelativeLayout {
         hasSize = true;
         if (waitingDocumentConfigurator != null) {
             waitingDocumentConfigurator.load();
+        }
+        if (w != oldw && searchResultPanel != null && searchResultPanel.getParent() == this) {
+            loadSearchResultListView();
         }
         if (isInEditMode() || state != State.SHOWN) {
             return;
@@ -923,9 +925,7 @@ public class PDFView extends RelativeLayout {
             isScrollHandleInit = true;
         }
 
-        if (isShowSearchResultList && recyclerView != null) {
-            loadSearchResultListView();
-        }
+        loadSearchResultListView();
 
         dragPinchManager.enable();
 
@@ -986,16 +986,22 @@ public class PDFView extends RelativeLayout {
      * @param moveHandle whether to move scroll handle or not
      */
     public void moveTo(float offsetX, float offsetY, boolean moveHandle) {
+        moveTo(offsetX, offsetY, moveHandle, 0, getWidth());
+    }
+
+    private void moveTo(float offsetX, float offsetY, boolean moveHandle,
+                        float viewportLeft, float viewportRight) {
+        float viewportWidth = viewportRight - viewportLeft;
         if (swipeVertical) {
             // Check X offset
             float scaledPageWidth = toCurrentScale(pdfFile.getMaxPageWidth());
-            if (scaledPageWidth < getWidth()) {
-                offsetX = getWidth() / 2 - scaledPageWidth / 2;
+            if (scaledPageWidth < viewportWidth) {
+                offsetX = viewportLeft + (viewportWidth - scaledPageWidth) / 2;
             } else {
-                if (offsetX > 0) {
-                    offsetX = 0;
-                } else if (offsetX + scaledPageWidth < getWidth()) {
-                    offsetX = getWidth() - scaledPageWidth;
+                if (offsetX > viewportLeft) {
+                    offsetX = viewportLeft;
+                } else if (offsetX + scaledPageWidth < viewportRight) {
+                    offsetX = viewportRight - scaledPageWidth;
                 }
             }
 
@@ -1033,13 +1039,13 @@ public class PDFView extends RelativeLayout {
 
             // Check X offset
             float contentWidth = pdfFile.getDocLen(zoom);
-            if (contentWidth < getWidth()) { // whole document width visible on screen
-                offsetX = (getWidth() - contentWidth) / 2;
+            if (contentWidth < viewportWidth) { // whole document width visible on screen
+                offsetX = viewportLeft + (viewportWidth - contentWidth) / 2;
             } else {
-                if (offsetX > 0) { // left visible
-                    offsetX = 0;
-                } else if (offsetX + contentWidth < getWidth()) { // right visible
-                    offsetX = -contentWidth + getWidth();
+                if (offsetX > viewportLeft) { // left visible
+                    offsetX = viewportLeft;
+                } else if (offsetX + contentWidth < viewportRight) { // right visible
+                    offsetX = viewportRight - contentWidth;
                 }
             }
 
@@ -1464,8 +1470,12 @@ public class PDFView extends RelativeLayout {
         this.pageLoadingDialog = pageLoadingDialog;
     }
 
+    /**
+     * @deprecated Search results always navigate to the match in continuous mode.
+     * Single-page mode continues to navigate to the page. The argument is ignored.
+     */
+    @Deprecated
     public void setIsAllowToJumpToSpecificLocation(boolean isAllowToJumpToSpecificLocation) {
-        this.isAllowToJumpToSpecificLocation = isAllowToJumpToSpecificLocation;
     }
 
     public void setJustShowPage(boolean justShowPage) {
@@ -1473,23 +1483,36 @@ public class PDFView extends RelativeLayout {
     }
 
     private void loadSearchResultListView() {
-        if (recyclerView != null && isShowSearchResultList) {
-            Log.i("searchResultListView", "width = " + (getWidth() / 4) + " height = " + (getHeight()));
-            RelativeLayout.LayoutParams parentLp = new RelativeLayout.LayoutParams(getWidth() / 4, getHeight());
-            parentLp.addRule(RelativeLayout.CENTER_HORIZONTAL);
-            if (showSearchResultListGravity == Gravity.LEFT) {
-                parentLp.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-            }
-            else if (showSearchResultListGravity == Gravity.RIGHT) {
-                parentLp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-            }
-            this.addView(recyclerView, parentLp);
+        if (searchResultPanel == null || !isShowSearchResultList) {
+            return;
         }
+        int width = Math.min(getWidth(), Math.max(getWidth() / 4, Util.getDP(getContext(), 240)));
+        if (searchResultPanel.getParent() == this) {
+            // Keep RelativeLayout's resolved bounds when resizing during layout.
+            RelativeLayout.LayoutParams params =
+                    (RelativeLayout.LayoutParams) searchResultPanel.getLayoutParams();
+            if (params.width != width) {
+                params.width = width;
+                searchResultPanel.setLayoutParams(params);
+            }
+            return;
+        }
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+                width, RelativeLayout.LayoutParams.MATCH_PARENT);
+        if (showSearchResultListGravity == Gravity.LEFT) {
+            params.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+        } else if (showSearchResultListGravity == Gravity.RIGHT) {
+            params.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        } else {
+            params.addRule(RelativeLayout.CENTER_HORIZONTAL);
+        }
+        addView(searchResultPanel, params);
     }
 
     public void setupSearchResultListView() {
-        if (recyclerView == null) {
-            recyclerView = new RecyclerView(getContext(), null);
+        if (searchResultPanel == null) {
+            searchResultPanel = new SearchResultPanel(getContext());
+            RecyclerView recyclerView = searchResultPanel.getRecyclerView();
             recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
             searchResultAdapter = new DefaultSearchResultAdapter(getContext(), this.isJustShowPage);
             searchResultAdapter.setOnItemClickListener(new DefaultSearchResultAdapter.OnItemClickListener() {
@@ -1499,55 +1522,53 @@ public class PDFView extends RelativeLayout {
                 }
             });
             recyclerView.setAdapter(searchResultAdapter);
-            recyclerView.setVisibility(View.GONE);
+            searchResultPanel.setVisibility(View.GONE);
         }
     }
 
     private void jumpToSearchResult(int position, Integer pageIndex, PdfFile pdfFile) {
         if (searchResultAdapter == null || searchResultAdapter.getItemCount() == 0)
             return;
-        // 如果是单页模式或者不自动滑动对应位置，则跳转到对应页面即可
-        if (singlePageMode || !isAllowToJumpToSpecificLocation) {
+        // 单页模式保持原有的跳页行为。
+        if (singlePageMode) {
             jumpTo(pageIndex);
             return;
         }
-        if (isAllowToJumpToSpecificLocation) {
-            PdfDocument.Text text = searchResultAdapter.getDataList().get(position);
-            if (text.getDestPageIdx() == pageIndex) {
-                SizeF pageSize = pdfFile.getScaledPageSize(pageIndex, getZoom());
-                int pageX, pageY;
-                if (isSwipeVertical()) {
-                    pageX = (int) pdfFile.getSecondaryPageOffset(pageIndex, getZoom());
-                    pageY = (int) pdfFile.getPageOffset(pageIndex, getZoom());
-                } else {
-                    pageY = (int) pdfFile.getSecondaryPageOffset(pageIndex, getZoom());
-                    pageX = (int) pdfFile.getPageOffset(pageIndex, getZoom());
-                }
-//                Log.i("jumpToSearchResult", pageX + " - " + pageY + " - " +  (int) pageSize.getWidth() + " - " + (int) pageSize.getHeight());
-//                Log.i("jumpToSearchResult", pageSize.toString());
-//                Log.i("jumpToSearchResult", text.toString());
-//                Log.i("jumpToSearchResult", pdfFile.getDocLen(zoom) + " - " + (text.getBounds().top * getZoom() + pageY));
-                RectF mapped = pdfFile.mapRectToDeviceWithOpen(pageIndex, pageX, pageY, (int) pageSize.getWidth(), (int) pageSize.getHeight(), text.getBounds());
-//                Log.i("jumpToSearchResult", mapped.toString());
-                if (isSwipeVertical()) {
-                    moveTo(0, -mapped.top);
-                }
-                else {
-                    moveTo(-mapped.left, 0);
-                }
-                loadPageByOffset();
+        PdfDocument.Text text = searchResultAdapter.getDataList().get(position);
+        SizeF pageSize = pdfFile.getScaledPageSize(pageIndex, zoom);
+        float primaryOffset = pdfFile.getPageOffset(pageIndex, zoom);
+        float secondaryOffset = pdfFile.getSecondaryPageOffset(pageIndex, zoom);
+        int pageX = (int) (swipeVertical ? secondaryOffset : primaryOffset);
+        int pageY = (int) (swipeVertical ? primaryOffset : secondaryOffset);
+        RectF mapped = pdfFile.mapRectToDeviceWithOpen(pageIndex, pageX, pageY,
+                (int) pageSize.getWidth(), (int) pageSize.getHeight(), text.getBounds());
+
+        float readingLeft = 0;
+        float readingRight = getWidth();
+        if (searchResultPanel.getVisibility() == View.VISIBLE) {
+            if (showSearchResultListGravity == Gravity.LEFT) {
+                readingLeft = searchResultPanel.getRight();
+            } else if (showSearchResultListGravity == Gravity.RIGHT) {
+                readingRight = searchResultPanel.getLeft();
             }
         }
+        animationManager.stopAll();
+        moveTo((readingLeft + readingRight) / 2f - mapped.centerX(),
+                getHeight() / 2f - mapped.centerY(), true, readingLeft, readingRight);
+        loadPageByOffset();
     }
 
     public void updateSearchResultList(ArrayList<PdfDocument.Text> list) {
-        if (searchResultAdapter != null && list != null) {
-            searchResultAdapter.addDataList(list);
-            recyclerView.setVisibility(View.VISIBLE);
+        if (searchResultPanel == null) {
+            return;
         }
-        else {
-            recyclerView.setVisibility(View.GONE);
+        if (list == null) {
+            searchResultPanel.setVisibility(View.GONE);
+            return;
         }
+        searchResultAdapter.addDataList(list);
+        searchResultPanel.updateSummary(list);
+        searchResultPanel.setVisibility(View.VISIBLE);
     }
 
     /** Returns null if document is not loaded */
@@ -1674,7 +1695,6 @@ public class PDFView extends RelativeLayout {
 
         private int searchResultListGravity = Gravity.LEFT;
 
-        private boolean isAllowToJumpToSpecificLocation = false;
         private boolean isJustShowPage = false;
 
         private Configurator(DocumentSource documentSource) {
@@ -1837,10 +1857,13 @@ public class PDFView extends RelativeLayout {
             return this;
         }
 
+        /**
+         * Shows search results. Continuous mode always centers the clicked match.
+         * @param isAllowToJumpToSpecificLocation retained for source compatibility; ignored
+         */
         public Configurator showSearchResultList(boolean isShow, int gravity, boolean isAllowToJumpToSpecificLocation, boolean isJustShowPage) {
             this.isShowSearchResultList = isShow;
             this.searchResultListGravity = gravity;
-            this.isAllowToJumpToSpecificLocation = isAllowToJumpToSpecificLocation;
             this.isJustShowPage = isJustShowPage;
             return this;
         }
@@ -1881,7 +1904,6 @@ public class PDFView extends RelativeLayout {
             PDFView.this.setSinglePageMode(singlePageMode);
             PDFView.this.setShowSearchResultList(isShowSearchResultList);
             PDFView.this.setShowSearchResultListGravity(searchResultListGravity);
-            PDFView.this.setIsAllowToJumpToSpecificLocation(isAllowToJumpToSpecificLocation);
             PDFView.this.setJustShowPage(isJustShowPage);
 
 

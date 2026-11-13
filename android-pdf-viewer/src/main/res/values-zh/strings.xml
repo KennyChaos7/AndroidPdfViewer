@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pdf_search_results_title">搜索结果</string>
+    <string name="pdf_search_page_label">第 %1$d 页</string>
+    <string name="pdf_search_no_results">没有找到匹配内容</string>
+    <plurals name="pdf_search_result_count">
+        <item quantity="other">%1$d 条</item>
+    </plurals>
+    <plurals name="pdf_search_page_match_count">
+        <item quantity="other">本页 %1$d 处匹配</item>
+    </plurals>
+</resources>

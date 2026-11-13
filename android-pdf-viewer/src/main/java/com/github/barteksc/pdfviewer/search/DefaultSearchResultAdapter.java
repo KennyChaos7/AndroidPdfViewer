@@ -2,11 +2,10 @@ package com.github.barteksc.pdfviewer.search;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
-import android.util.Log;
+import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.github.barteksc.pdfviewer.R;
 import com.shockwave.pdfium.PdfDocument;
 
 import java.util.ArrayList;
@@ -20,12 +19,9 @@ public class DefaultSearchResultAdapter extends BaseSearchAdapter<DefaultSearchV
     private ArrayList<PdfDocument.Text> dataList = new ArrayList<>();
     private HashMap<Integer, Integer> numInPage = new HashMap<>();
     private OnItemClickListener onItemClickListener;
-    private String formatHeadText = "";
-    private String formatContentText = "";
+    private int selectedPosition = RecyclerView.NO_POSITION;
 
     public DefaultSearchResultAdapter(Context context, boolean isJustShowPage) {
-        this.formatHeadText = context.getString(R.string.pdf_search_result_on_one_page_head);
-        this.formatContentText = context.getString(R.string.pdf_search_result_on_one_page_content);
         if (isJustShowPage) {
             itemType = TYPE_PAGE;
         }
@@ -37,23 +33,24 @@ public class DefaultSearchResultAdapter extends BaseSearchAdapter<DefaultSearchV
     @NonNull
     @Override
     public DefaultSearchViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
-        return new DefaultSearchViewHolder(viewGroup.getContext());
+        return new DefaultSearchViewHolder(viewGroup);
     }
 
     @Override
     public void onBindViewHolder(@NonNull DefaultSearchViewHolder defaultSearchViewHolder, int i) {
         final DefaultSearchViewHolder finalDefaultSearchViewHolder = defaultSearchViewHolder;
         final int position = i;
-        final PdfDocument.Text text = (PdfDocument.Text) dataList.get(position);
-        if (itemType == TYPE_PAGE) {
-            finalDefaultSearchViewHolder.getTvPage().setText(String.format(formatHeadText, text.getDestPageIdx() + 1, numInPage.get(text.getDestPageIdx())));
-        }
-        else if (itemType == TYPE_DETAILS) {
-            finalDefaultSearchViewHolder.getTvPage().setText(String.format(formatContentText, text.getDestPageIdx() + 1, text.getBounds().left, text.getBounds().top, text.getContextText()));
-        }
+        final PdfDocument.Text text = dataList.get(position);
+        boolean pageSummary = itemType == TYPE_PAGE;
+        defaultSearchViewHolder.bind(text, position, pageSummary,
+                pageSummary ? numInPage.get(text.getDestPageIdx()) : 0,
+                position == selectedPosition);
         finalDefaultSearchViewHolder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (selectedPosition != position) {
+                    setSelectedPosition(position);
+                }
                 if (onItemClickListener != null) {
                     onItemClickListener.onClick(position, text.getDestPageIdx(), text, finalDefaultSearchViewHolder.itemView);
                 }
@@ -66,8 +63,17 @@ public class DefaultSearchResultAdapter extends BaseSearchAdapter<DefaultSearchV
         return dataList.size();
     }
 
+    private void setSelectedPosition(int position) {
+        if (selectedPosition == position) return;
+        int previous = selectedPosition;
+        selectedPosition = position;
+        if (previous != RecyclerView.NO_POSITION) notifyItemChanged(previous);
+        if (position != RecyclerView.NO_POSITION) notifyItemChanged(position);
+    }
+
     @Override
     public void addDataList(ArrayList<PdfDocument.Text> newList) {
+        selectedPosition = RecyclerView.NO_POSITION;
         this.numInPage.clear();
         this.dataList.clear();
         if (itemType == TYPE_PAGE) {

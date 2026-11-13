@@ -52,7 +52,7 @@
     - [x] 搜索结果要按页排序或者全部列出
       - 例如搜索结构中，存在单页里有多个结果时候的，则通过设置**showSearchResultList**列出全部结果，并且在点击跳转时自动将结果居中显示
     - [x] 支持跳到具体页面，或者具体位置
-      > 通过设置**showSearchResultList**的**isAllowToJumpToSpecificLocation**来选择是跳到具体页面还是具体位置
+      > 非单页模式默认跳转到点击的命中位置，并在扣除搜索列表后的阅读区域中居中显示，保持当前缩放；受文档边界限制时移动到最近合法位置。单页模式保持原来的跳页行为。**showSearchResultList** 的旧参数 **isAllowToJumpToSpecificLocation** 及同名 setter 保留签名，但不再控制此行为，无需额外开启。
   - [ ] 支持多种搜索的匹配模式(例如完全匹配或者模糊匹配等)
 
 - [ ] Pdf文件内修改和批注
